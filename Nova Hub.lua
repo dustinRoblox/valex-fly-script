@@ -23,7 +23,7 @@ local Window = OrionLib:MakeWindow({
         end
         _G.InfiniteJumpEnabled = false
         _G.SnappingAimbotEnabled = false
-        print("UI Closed")
+        print("UI Closed, values reset")
     end
 })
 
@@ -34,7 +34,7 @@ local MainTab = Window:MakeTab({
     PremiumOnly = false
 })
 
--- Create Player Tab (all the good stuff here)
+-- Create Player Tab
 local PlayerTab = Window:MakeTab({
     Name = "Player",
     Icon = "rbxassetid://4483345998",
@@ -54,10 +54,10 @@ PlayerTab:AddSlider({
     Color = Color3.fromRGB(0, 255, 0),
     Increment = 1,
     ValueName = "WalkSpeed",
-    Callback = function(Value)
+    Callback = function(value)
         local player = game.Players.LocalPlayer
         if player.Character and player.Character:FindFirstChild("Humanoid") then
-            player.Character.Humanoid.WalkSpeed = Value
+            player.Character.Humanoid.WalkSpeed = value
         end
     end
 })
@@ -71,10 +71,10 @@ PlayerTab:AddSlider({
     Color = Color3.fromRGB(255, 255, 0),
     Increment = 5,
     ValueName = "JumpPower",
-    Callback = function(Value)
+    Callback = function(value)
         local player = game.Players.LocalPlayer
         if player.Character and player.Character:FindFirstChild("Humanoid") then
-            player.Character.Humanoid.JumpPower = Value
+            player.Character.Humanoid.JumpPower = value
         end
     end
 })
@@ -107,7 +107,7 @@ PlayerTab:AddToggle({
     end
 })
 
--- Snapping Silent Aimbot Toggle
+-- Snapping Silent Aimbot Toggle (snaps to every player’s head, no distance limit)
 _G.SnappingAimbotEnabled = false
 PlayerTab:AddToggle({
     Name = "Snapping Silent Aimbot",
@@ -120,21 +120,18 @@ PlayerTab:AddToggle({
 local Camera = workspace.CurrentCamera
 local Mouse = Players.LocalPlayer:GetMouse()
 
-local function getClosestToMouse()
+local function getClosestPlayer()
     local closestPlayer = nil
     local shortestDistance = math.huge
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= Players.LocalPlayer
-           and player.Character
-           and player.Character:FindFirstChild("HumanoidRootPart")
-           and player.Character:FindFirstChild("Humanoid")
-           and player.Character.Humanoid.Health > 0 then
-            local pos = player.Character.HumanoidRootPart.Position
-            local screenPos, onScreen = Camera:WorldToViewportPoint(pos)
-            local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(Mouse.X, Mouse.Y)).Magnitude
-            if onScreen and dist < shortestDistance then
-                closestPlayer = player
-                shortestDistance = dist
+        if player ~= Players.LocalPlayer and player.Character and player.Character:FindFirstChild("Head") and player.Character.Humanoid.Health > 0 then
+            local screenPos, onScreen = Camera:WorldToViewportPoint(player.Character.Head.Position)
+            if onScreen then
+                local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(Mouse.X, Mouse.Y)).Magnitude
+                if dist < shortestDistance then
+                    closestPlayer = player
+                    shortestDistance = dist
+                end
             end
         end
     end
@@ -149,7 +146,7 @@ mt.__namecall = newcclosure(function(self, ...)
     local method = getnamecallmethod()
     local args = {...}
     if _G.SnappingAimbotEnabled and tostring(self) == "Hit" and method == "FireServer" then
-        local target = getClosestToMouse()
+        local target = getClosestPlayer()
         if target and target.Character and target.Character:FindFirstChild("Head") then
             args[1] = target.Character.Head.Position
             return oldNamecall(self, unpack(args))
@@ -168,5 +165,5 @@ PlayerTab:AddButton({
     end
 })
 
--- Initialize the UI
+-- Init UI
 OrionLib:Init()
