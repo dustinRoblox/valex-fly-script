@@ -34,6 +34,8 @@ local MainTab = Window:MakeTab({
     PremiumOnly = false
 })
 
+MainTab:AddSection({ Name = "Welcome Section" }) -- Add section so it shows up
+
 local version = "v1.0.0"
 local welcomeLabel = MainTab:AddLabel("Welcome to Nova Hub! Version: " .. version)
 
@@ -51,7 +53,7 @@ local PlayerTab = Window:MakeTab({
     PremiumOnly = false
 })
 
--- Add a section to the Player tab so UI elements show up
+-- This is the key: Add a section before adding UI elements to Player tab!
 PlayerTab:AddSection({
     Name = "Player Controls"
 })
@@ -118,7 +120,7 @@ PlayerTab:AddToggle({
     end
 })
 
--- Snapping Aim (visible camera snap)
+-- Snapping Aim
 _G.SnappingAimEnabled = false
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
@@ -196,5 +198,5 @@ PlayerTab:AddButton({
     end
 })
 
--- Initialize UI
+-- Finally, init your UI after ALL tabs, sections, and elements are added
 OrionLib:Init()
