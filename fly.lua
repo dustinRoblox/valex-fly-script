@@ -4,17 +4,32 @@ local hrp = character:WaitForChild("HumanoidRootPart")
 
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
 
 local flying = false
-local speed = 30 -- slower speed for less suspicion
+local speed = 30
 local acceleration = 0.2
 local velocity = Vector3.new(0,0,0)
-local targetVelocity = Vector3.new(0,0,0)
 
 local bodyGyro
 local bodyVelocity
 
 local controls = { forward = false, backward = false, left = false, right = false, up = false, down = false }
+
+-- GUI setup
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "FlyToggleGui"
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0, 120, 0, 50)
+toggleButton.Position = UDim2.new(0, 10, 0, 10)
+toggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+toggleButton.TextColor3 = Color3.new(1, 1, 1)
+toggleButton.Text = "Fly: OFF"
+toggleButton.Font = Enum.Font.GothamBold
+toggleButton.TextScaled = true
+toggleButton.Parent = screenGui
 
 function createBodies()
     bodyGyro = Instance.new("BodyGyro", hrp)
@@ -43,36 +58,38 @@ function updateVelocity(dt)
     if controls.down then moveDir = moveDir - Vector3.new(0,1,0) end
 
     moveDir = moveDir.Unit * speed
-    if moveDir ~= moveDir then -- NaN check when no input
+    if moveDir ~= moveDir then -- NaN check
         moveDir = Vector3.new(0,0,0)
     end
 
-    -- Smooth acceleration / deceleration
     velocity = velocity:Lerp(moveDir, acceleration)
 end
 
+-- Toggle fly function
+local function toggleFly()
+    flying = not flying
+    if flying then
+        toggleButton.Text = "Fly: ON"
+        createBodies()
+    else
+        toggleButton.Text = "Fly: OFF"
+        destroyBodies()
+        velocity = Vector3.new(0,0,0)
+    end
+end
+
+-- Button click event
+toggleButton.MouseButton1Click:Connect(toggleFly)
+
+-- Movement keys
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.F then
-        flying = not flying
-        if flying then
-            createBodies()
-        else
-            destroyBodies()
-            velocity = Vector3.new(0,0,0)
-        end
-    elseif input.KeyCode == Enum.KeyCode.W then
-        controls.forward = true
-    elseif input.KeyCode == Enum.KeyCode.S then
-        controls.backward = true
-    elseif input.KeyCode == Enum.KeyCode.A then
-        controls.left = true
-    elseif input.KeyCode == Enum.KeyCode.D then
-        controls.right = true
-    elseif input.KeyCode == Enum.KeyCode.E then
-        controls.up = true
-    elseif input.KeyCode == Enum.KeyCode.Q then
-        controls.down = true
+    if input.KeyCode == Enum.KeyCode.W then controls.forward = true
+    elseif input.KeyCode == Enum.KeyCode.S then controls.backward = true
+    elseif input.KeyCode == Enum.KeyCode.A then controls.left = true
+    elseif input.KeyCode == Enum.KeyCode.D then controls.right = true
+    elseif input.KeyCode == Enum.KeyCode.E then controls.up = true
+    elseif input.KeyCode == Enum.KeyCode.Q then controls.down = true
     end
 end)
 
@@ -93,4 +110,4 @@ RunService.Heartbeat:Connect(function(dt)
     end
 end)
 
-print("Press F to toggle fly. Use WASD + E/Q to move up/down.")
+print("GUI fly toggle loaded! Click the button to toggle flying.")
