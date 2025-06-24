@@ -3,12 +3,12 @@ local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/jens
 
 -- Create the Window
 local Window = OrionLib:MakeWindow({
-    Name = "Orion Speed Hub",
+    Name = "Nova Hub",
     HidePremium = false,
     SaveConfig = true,
     ConfigFolder = "SpeedHubConfig",
     IntroEnabled = true,
-    IntroText = "Welcome to Orion Speed Hub!",
+    IntroText = "Welcome to Nova Hub!",
     IntroIcon = "rbxassetid://4483345998",
     Icon = "rbxassetid://4483345998",
     CloseCallback = function()
@@ -23,6 +23,7 @@ local Window = OrionLib:MakeWindow({
             _G.InfiniteJumpConnection:Disconnect()
             _G.InfiniteJumpConnection = nil
         end
+        _G.InfiniteJumpEnabled = false
         print("UI Closed")
     end
 })
@@ -74,26 +75,27 @@ Tab:AddSlider({
 })
 
 -- Infinite Jump Toggle
+_G.InfiniteJumpEnabled = false
+local UIS = game:GetService("UserInputService")
+
+if _G.InfiniteJumpConnection then
+    _G.InfiniteJumpConnection:Disconnect()
+end
+
+_G.InfiniteJumpConnection = UIS.JumpRequest:Connect(function()
+    if _G.InfiniteJumpEnabled then
+        local player = game.Players.LocalPlayer
+        if player.Character and player.Character:FindFirstChild("Humanoid") then
+            player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end
+end)
+
 Tab:AddToggle({
     Name = "Infinite Jump",
     Default = false,
     Callback = function(enabled)
-        if enabled then
-            if not _G.InfiniteJumpConnection then
-                local UIS = game:GetService("UserInputService")
-                _G.InfiniteJumpConnection = UIS.JumpRequest:Connect(function()
-                    local player = game.Players.LocalPlayer
-                    if player.Character and player.Character:FindFirstChild("Humanoid") then
-                        player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-                    end
-                end)
-            end
-        else
-            if _G.InfiniteJumpConnection then
-                _G.InfiniteJumpConnection:Disconnect()
-                _G.InfiniteJumpConnection = nil
-            end
-        end
+        _G.InfiniteJumpEnabled = enabled
     end
 })
 
