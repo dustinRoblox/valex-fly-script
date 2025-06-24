@@ -27,6 +27,13 @@ local Window = OrionLib:MakeWindow({
     end
 })
 
+-- Create Main Tab (empty)
+local MainTab = Window:MakeTab({
+    Name = "Main",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
 -- Create Player Tab
 local PlayerTab = Window:MakeTab({
     Name = "Player",
