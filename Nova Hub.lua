@@ -44,18 +44,6 @@ function updateAnnouncements(newText)
     newsParagraph:Set("Announcements", newText)
 end
 
-MainTab:AddToggle({
-    Name = "Toggle Hub Visibility",
-    Default = true,
-    Callback = function(state)
-        if state then
-            Window:Show()
-        else
-            Window:Hide()
-        end
-    end
-})
-
 -- ==== PLAYER TAB ====
 local PlayerTab = Window:MakeTab({
     Name = "Player",
@@ -63,6 +51,7 @@ local PlayerTab = Window:MakeTab({
     PremiumOnly = false
 })
 
+-- Add a section to the Player tab so UI elements show up
 PlayerTab:AddSection({
     Name = "Player Controls"
 })
