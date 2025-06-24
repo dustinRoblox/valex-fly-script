@@ -27,19 +27,19 @@ local Window = OrionLib:MakeWindow({
     end
 })
 
--- Create Main Tab
-local Tab = Window:MakeTab({
-    Name = "Main",
+-- Create Player Tab
+local PlayerTab = Window:MakeTab({
+    Name = "Player",
     Icon = "rbxassetid://4483345998",
     PremiumOnly = false
 })
 
-Tab:AddSection({
+PlayerTab:AddSection({
     Name = "Player Controls"
 })
 
 -- Speed Slider
-Tab:AddSlider({
+PlayerTab:AddSlider({
     Name = "Player Speed",
     Min = 0,
     Max = 100,
@@ -56,7 +56,7 @@ Tab:AddSlider({
 })
 
 -- Jump Power Slider
-Tab:AddSlider({
+PlayerTab:AddSlider({
     Name = "Jump Power",
     Min = 0,
     Max = 200,
@@ -78,7 +78,7 @@ local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local InfiniteJumpConnection
 
-Tab:AddToggle({
+PlayerTab:AddToggle({
     Name = "Infinite Jump",
     Default = false,
     Callback = function(enabled)
@@ -102,7 +102,7 @@ Tab:AddToggle({
 
 -- Silent Aimbot
 _G.SilentAimbotEnabled = false
-Tab:AddToggle({
+PlayerTab:AddToggle({
     Name = "Silent Aimbot",
     Default = false,
     Callback = function(state)
@@ -150,7 +150,7 @@ end)
 setreadonly(mt, true)
 
 -- Destroy UI
-Tab:AddButton({
+PlayerTab:AddButton({
     Name = "Destroy UI",
     Callback = function()
         OrionLib:Destroy()
