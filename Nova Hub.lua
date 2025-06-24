@@ -21,8 +21,8 @@ local Window = OrionLib:MakeWindow({
             InfiniteJumpConnection:Disconnect()
             InfiniteJumpConnection = nil
         end
+        toggleSnappingAim(false)
         _G.InfiniteJumpEnabled = false
-        _G.SnappingAimbotEnabled = false
         print("UI Closed, values reset")
     end
 })
@@ -107,27 +107,20 @@ PlayerTab:AddToggle({
     end
 })
 
--- Snapping Silent Aimbot Toggle (snaps to every player’s head, no distance limit)
-_G.SnappingAimbotEnabled = false
-PlayerTab:AddToggle({
-    Name = "Snapping Silent Aimbot",
-    Default = false,
-    Callback = function(state)
-        _G.SnappingAimbotEnabled = state
-    end
-})
-
+-- Snapping Aim (visible camera snap)
+_G.SnappingAimEnabled = false
+local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
-local Mouse = Players.LocalPlayer:GetMouse()
+local LocalPlayer = Players.LocalPlayer
 
 local function getClosestPlayer()
     local closestPlayer = nil
     local shortestDistance = math.huge
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= Players.LocalPlayer and player.Character and player.Character:FindFirstChild("Head") and player.Character.Humanoid.Health > 0 then
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") and player.Character.Humanoid.Health > 0 then
             local screenPos, onScreen = Camera:WorldToViewportPoint(player.Character.Head.Position)
             if onScreen then
-                local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(Mouse.X, Mouse.Y)).Magnitude
+                local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y)).Magnitude
                 if dist < shortestDistance then
                     closestPlayer = player
                     shortestDistance = dist
@@ -138,24 +131,51 @@ local function getClosestPlayer()
     return closestPlayer
 end
 
-local mt = getrawmetatable(game)
-local oldNamecall = mt.__namecall
-setreadonly(mt, false)
+local mouseDown = false
 
-mt.__namecall = newcclosure(function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
-    if _G.SnappingAimbotEnabled and tostring(self) == "Hit" and method == "FireServer" then
-        local target = getClosestPlayer()
-        if target and target.Character and target.Character:FindFirstChild("Head") then
-            args[1] = target.Character.Head.Position
-            return oldNamecall(self, unpack(args))
-        end
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        mouseDown = true
     end
-    return oldNamecall(self, ...)
 end)
 
-setreadonly(mt, true)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        mouseDown = false
+    end
+end)
+
+local snappingConnection
+
+local function onRenderStep()
+    if _G.SnappingAimEnabled and mouseDown then
+        local target = getClosestPlayer()
+        if target and target.Character and target.Character:FindFirstChild("Head") then
+            local headPos = target.Character.Head.Position
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, headPos)
+        end
+    end
+end
+
+function toggleSnappingAim(state)
+    _G.SnappingAimEnabled = state
+    if state then
+        snappingConnection = RunService:BindToRenderStep("SnappingAim", Enum.RenderPriority.Camera.Value + 1, onRenderStep)
+    else
+        if snappingConnection then
+            RunService:UnbindFromRenderStep("SnappingAim")
+            snappingConnection = nil
+        end
+    end
+end
+
+PlayerTab:AddToggle({
+    Name = "Snapping Aim",
+    Default = false,
+    Callback = function(state)
+        toggleSnappingAim(state)
+    end
+})
 
 -- Destroy UI Button
 PlayerTab:AddButton({
@@ -165,5 +185,5 @@ PlayerTab:AddButton({
     end
 })
 
--- Init UI
+-- Initialize UI
 OrionLib:Init()
