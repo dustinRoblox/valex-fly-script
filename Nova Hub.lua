@@ -12,6 +12,17 @@ local Window = OrionLib:MakeWindow({
     IntroIcon = "rbxassetid://4483345998",
     Icon = "rbxassetid://4483345998",
     CloseCallback = function()
+        -- Reset walk speed and jump power to default
+        local player = game.Players.LocalPlayer
+        if player.Character and player.Character:FindFirstChild("Humanoid") then
+            player.Character.Humanoid.WalkSpeed = 16
+            player.Character.Humanoid.JumpPower = 50
+        end
+        -- Disconnect infinite jump
+        if _G.InfiniteJumpConnection then
+            _G.InfiniteJumpConnection:Disconnect()
+            _G.InfiniteJumpConnection = nil
+        end
         print("UI Closed")
     end
 })
@@ -67,15 +78,22 @@ Tab:AddToggle({
     Name = "Infinite Jump",
     Default = false,
     Callback = function(enabled)
-        local UIS = game:GetService("UserInputService")
-        UIS.JumpRequest:Connect(function()
-            if enabled then
-                local player = game.Players.LocalPlayer
-                if player.Character and player.Character:FindFirstChild("Humanoid") then
-                    player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-                end
+        if enabled then
+            if not _G.InfiniteJumpConnection then
+                local UIS = game:GetService("UserInputService")
+                _G.InfiniteJumpConnection = UIS.JumpRequest:Connect(function()
+                    local player = game.Players.LocalPlayer
+                    if player.Character and player.Character:FindFirstChild("Humanoid") then
+                        player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                    end
+                end)
             end
-        end)
+        else
+            if _G.InfiniteJumpConnection then
+                _G.InfiniteJumpConnection:Disconnect()
+                _G.InfiniteJumpConnection = nil
+            end
+        end
     end
 })
 
