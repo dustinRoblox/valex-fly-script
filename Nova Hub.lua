@@ -17,9 +17,9 @@ local Window = OrionLib:MakeWindow({
             player.Character.Humanoid.WalkSpeed = 16
             player.Character.Humanoid.JumpPower = 50
         end
-        if _G.InfiniteJumpConnection then
-            _G.InfiniteJumpConnection:Disconnect()
-            _G.InfiniteJumpConnection = nil
+        if InfiniteJumpConnection then
+            InfiniteJumpConnection:Disconnect()
+            InfiniteJumpConnection = nil
         end
         _G.InfiniteJumpEnabled = false
         _G.SilentAimbotEnabled = false
@@ -74,23 +74,29 @@ Tab:AddSlider({
 
 -- Infinite Jump
 _G.InfiniteJumpEnabled = false
-local UIS = game:GetService("UserInputService")
-
-if _G.InfiniteJumpConnection then _G.InfiniteJumpConnection:Disconnect() end
-_G.InfiniteJumpConnection = UIS.JumpRequest:Connect(function()
-    if _G.InfiniteJumpEnabled then
-        local player = game.Players.LocalPlayer
-        if player.Character and player.Character:FindFirstChild("Humanoid") then
-            player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-        end
-    end
-end)
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local InfiniteJumpConnection
 
 Tab:AddToggle({
     Name = "Infinite Jump",
     Default = false,
     Callback = function(enabled)
         _G.InfiniteJumpEnabled = enabled
+
+        if enabled and not InfiniteJumpConnection then
+            InfiniteJumpConnection = UserInputService.JumpRequest:Connect(function()
+                if _G.InfiniteJumpEnabled then
+                    local player = Players.LocalPlayer
+                    if player.Character and player.Character:FindFirstChild("Humanoid") then
+                        player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                    end
+                end
+            end)
+        elseif not enabled and InfiniteJumpConnection then
+            InfiniteJumpConnection:Disconnect()
+            InfiniteJumpConnection = nil
+        end
     end
 })
 
@@ -104,16 +110,14 @@ Tab:AddToggle({
     end
 })
 
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
-local RunService = game:GetService("RunService")
+local Mouse = Players.LocalPlayer:GetMouse()
 
 local function getClosestToCrosshair()
     local closestPlayer = nil
     local shortestDistance = math.huge
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
+        if player ~= Players.LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
             local pos = player.Character.HumanoidRootPart.Position
             local screenPos, onScreen = Camera:WorldToViewportPoint(pos)
             local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(Mouse.X, Mouse.Y)).Magnitude
@@ -142,6 +146,7 @@ mt.__namecall = newcclosure(function(self, ...)
     end
     return backup(self, ...)
 end)
+
 setreadonly(mt, true)
 
 -- Destroy UI
