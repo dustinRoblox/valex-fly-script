@@ -1,61 +1,96 @@
--- Fly Script for Valex (toggle with F)
-local lp = game.Players.LocalPlayer
-local char = lp.Character or lp.CharacterAdded:Wait()
-local hrp = char:WaitForChild("HumanoidRootPart")
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
+
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
 local flying = false
-local speed = 50
-local uis = game:GetService("UserInputService")
-local rs = game:GetService("RunService")
-local ctrl = {f = 0, b = 0, l = 0, r = 0}
+local speed = 30 -- slower speed for less suspicion
+local acceleration = 0.2
+local velocity = Vector3.new(0,0,0)
+local targetVelocity = Vector3.new(0,0,0)
 
-local bg, bv
+local bodyGyro
+local bodyVelocity
 
-function startFly()
-    flying = true
-    bg = Instance.new("BodyGyro", hrp)
-    bg.P = 9e4
-    bg.maxTorque = Vector3.new(9e9, 9e9, 9e9)
-    bg.cframe = hrp.CFrame
+local controls = { forward = false, backward = false, left = false, right = false, up = false, down = false }
 
-    bv = Instance.new("BodyVelocity", hrp)
-    bv.velocity = Vector3.new(0, 0, 0)
-    bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
+function createBodies()
+    bodyGyro = Instance.new("BodyGyro", hrp)
+    bodyGyro.P = 5000
+    bodyGyro.maxTorque = Vector3.new(400000, 400000, 400000)
+    bodyGyro.cframe = hrp.CFrame
 
-    rs.RenderStepped:Connect(function()
-        if not flying then return end
-        bg.cframe = workspace.CurrentCamera.CFrame
-        local moveDir = Vector3.new()
-        moveDir = moveDir + (workspace.CurrentCamera.CFrame.LookVector * (ctrl.f - ctrl.b))
-        moveDir = moveDir + (workspace.CurrentCamera.CFrame.RightVector * (ctrl.r - ctrl.l))
-        bv.velocity = moveDir.unit * speed
-    end)
+    bodyVelocity = Instance.new("BodyVelocity", hrp)
+    bodyVelocity.MaxForce = Vector3.new(400000, 400000, 400000)
+    bodyVelocity.Velocity = Vector3.new(0,0,0)
 end
 
-function stopFly()
-    flying = false
-    if bg then bg:Destroy() end
-    if bv then bv:Destroy() end
+function destroyBodies()
+    if bodyGyro then bodyGyro:Destroy() bodyGyro = nil end
+    if bodyVelocity then bodyVelocity:Destroy() bodyVelocity = nil end
 end
 
-uis.InputBegan:Connect(function(input, gpe)
-    if gpe then return end
+function updateVelocity(dt)
+    local camCFrame = workspace.CurrentCamera.CFrame
+    local moveDir = Vector3.new(0,0,0)
+    if controls.forward then moveDir = moveDir + camCFrame.LookVector end
+    if controls.backward then moveDir = moveDir - camCFrame.LookVector end
+    if controls.left then moveDir = moveDir - camCFrame.RightVector end
+    if controls.right then moveDir = moveDir + camCFrame.RightVector end
+    if controls.up then moveDir = moveDir + Vector3.new(0,1,0) end
+    if controls.down then moveDir = moveDir - Vector3.new(0,1,0) end
+
+    moveDir = moveDir.Unit * speed
+    if moveDir ~= moveDir then -- NaN check when no input
+        moveDir = Vector3.new(0,0,0)
+    end
+
+    -- Smooth acceleration / deceleration
+    velocity = velocity:Lerp(moveDir, acceleration)
+end
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.F then
         flying = not flying
-        if flying then startFly() else stopFly() end
-    elseif input.KeyCode == Enum.KeyCode.W then ctrl.f = 1
-    elseif input.KeyCode == Enum.KeyCode.S then ctrl.b = 1
-    elseif input.KeyCode == Enum.KeyCode.A then ctrl.l = 1
-    elseif input.KeyCode == Enum.KeyCode.D then ctrl.r = 1
+        if flying then
+            createBodies()
+        else
+            destroyBodies()
+            velocity = Vector3.new(0,0,0)
+        end
+    elseif input.KeyCode == Enum.KeyCode.W then
+        controls.forward = true
+    elseif input.KeyCode == Enum.KeyCode.S then
+        controls.backward = true
+    elseif input.KeyCode == Enum.KeyCode.A then
+        controls.left = true
+    elseif input.KeyCode == Enum.KeyCode.D then
+        controls.right = true
+    elseif input.KeyCode == Enum.KeyCode.E then
+        controls.up = true
+    elseif input.KeyCode == Enum.KeyCode.Q then
+        controls.down = true
     end
 end)
 
-uis.InputEnded:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.W then ctrl.f = 0
-    elseif input.KeyCode == Enum.KeyCode.S then ctrl.b = 0
-    elseif input.KeyCode == Enum.KeyCode.A then ctrl.l = 0
-    elseif input.KeyCode == Enum.KeyCode.D then ctrl.r = 0
+UserInputService.InputEnded:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.W then controls.forward = false end
+    if input.KeyCode == Enum.KeyCode.S then controls.backward = false end
+    if input.KeyCode == Enum.KeyCode.A then controls.left = false end
+    if input.KeyCode == Enum.KeyCode.D then controls.right = false end
+    if input.KeyCode == Enum.KeyCode.E then controls.up = false end
+    if input.KeyCode == Enum.KeyCode.Q then controls.down = false end
+end)
+
+RunService.Heartbeat:Connect(function(dt)
+    if flying and bodyVelocity and bodyGyro then
+        bodyGyro.CFrame = workspace.CurrentCamera.CFrame
+        updateVelocity(dt)
+        bodyVelocity.Velocity = velocity
     end
 end)
 
-print("✅ Fly script ready. Press F to toggle flying.")
+print("Press F to toggle fly. Use WASD + E/Q to move up/down.")
