@@ -27,14 +27,36 @@ local Window = OrionLib:MakeWindow({
     end
 })
 
--- Create Main Tab (empty)
+-- ==== MAIN TAB ====
 local MainTab = Window:MakeTab({
     Name = "Main",
     Icon = "rbxassetid://4483345998",
     PremiumOnly = false
 })
 
--- Create Player Tab
+local version = "v1.0.0"
+local welcomeLabel = MainTab:AddLabel("Welcome to Nova Hub! Version: " .. version)
+
+local newsContent = "No new announcements yet. Stay tuned!"
+local newsParagraph = MainTab:AddParagraph("Announcements", newsContent)
+
+function updateAnnouncements(newText)
+    newsParagraph:Set("Announcements", newText)
+end
+
+MainTab:AddToggle({
+    Name = "Toggle Hub Visibility",
+    Default = true,
+    Callback = function(state)
+        if state then
+            Window:Show()
+        else
+            Window:Hide()
+        end
+    end
+})
+
+-- ==== PLAYER TAB ====
 local PlayerTab = Window:MakeTab({
     Name = "Player",
     Icon = "rbxassetid://4483345998",
