@@ -1,7 +1,7 @@
 -- Load Orion Library
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/jensonhirst/Orion/main/source"))()
 
--- Create the Window
+-- Create Window
 local Window = OrionLib:MakeWindow({
     Name = "Nova Hub",
     HidePremium = false,
@@ -22,7 +22,7 @@ local Window = OrionLib:MakeWindow({
             InfiniteJumpConnection = nil
         end
         _G.InfiniteJumpEnabled = false
-        _G.SilentAimbotEnabled = false
+        _G.SnappingAimbotEnabled = false
         print("UI Closed")
     end
 })
@@ -34,7 +34,7 @@ local MainTab = Window:MakeTab({
     PremiumOnly = false
 })
 
--- Create Player Tab
+-- Create Player Tab (all the good stuff here)
 local PlayerTab = Window:MakeTab({
     Name = "Player",
     Icon = "rbxassetid://4483345998",
@@ -79,7 +79,7 @@ PlayerTab:AddSlider({
     end
 })
 
--- Infinite Jump
+-- Infinite Jump Toggle
 _G.InfiniteJumpEnabled = false
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
@@ -107,24 +107,28 @@ PlayerTab:AddToggle({
     end
 })
 
--- Silent Aimbot
-_G.SilentAimbotEnabled = false
+-- Snapping Silent Aimbot Toggle
+_G.SnappingAimbotEnabled = false
 PlayerTab:AddToggle({
-    Name = "Silent Aimbot",
+    Name = "Snapping Silent Aimbot",
     Default = false,
     Callback = function(state)
-        _G.SilentAimbotEnabled = state
+        _G.SnappingAimbotEnabled = state
     end
 })
 
 local Camera = workspace.CurrentCamera
 local Mouse = Players.LocalPlayer:GetMouse()
 
-local function getClosestToCrosshair()
+local function getClosestToMouse()
     local closestPlayer = nil
     local shortestDistance = math.huge
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= Players.LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
+        if player ~= Players.LocalPlayer
+           and player.Character
+           and player.Character:FindFirstChild("HumanoidRootPart")
+           and player.Character:FindFirstChild("Humanoid")
+           and player.Character.Humanoid.Health > 0 then
             local pos = player.Character.HumanoidRootPart.Position
             local screenPos, onScreen = Camera:WorldToViewportPoint(pos)
             local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(Mouse.X, Mouse.Y)).Magnitude
@@ -138,25 +142,25 @@ local function getClosestToCrosshair()
 end
 
 local mt = getrawmetatable(game)
-local backup = mt.__namecall
+local oldNamecall = mt.__namecall
 setreadonly(mt, false)
 
 mt.__namecall = newcclosure(function(self, ...)
     local method = getnamecallmethod()
     local args = {...}
-    if _G.SilentAimbotEnabled and tostring(self) == "Hit" and method == "FireServer" then
-        local target = getClosestToCrosshair()
+    if _G.SnappingAimbotEnabled and tostring(self) == "Hit" and method == "FireServer" then
+        local target = getClosestToMouse()
         if target and target.Character and target.Character:FindFirstChild("Head") then
             args[1] = target.Character.Head.Position
-            return backup(self, unpack(args))
+            return oldNamecall(self, unpack(args))
         end
     end
-    return backup(self, ...)
+    return oldNamecall(self, ...)
 end)
 
 setreadonly(mt, true)
 
--- Destroy UI
+-- Destroy UI Button
 PlayerTab:AddButton({
     Name = "Destroy UI",
     Callback = function()
@@ -164,5 +168,5 @@ PlayerTab:AddButton({
     end
 })
 
--- Init
+-- Initialize the UI
 OrionLib:Init()
