@@ -12,18 +12,17 @@ local Window = OrionLib:MakeWindow({
     IntroIcon = "rbxassetid://4483345998",
     Icon = "rbxassetid://4483345998",
     CloseCallback = function()
-        -- Reset walk speed and jump power to default
         local player = game.Players.LocalPlayer
         if player.Character and player.Character:FindFirstChild("Humanoid") then
             player.Character.Humanoid.WalkSpeed = 16
             player.Character.Humanoid.JumpPower = 50
         end
-        -- Disconnect infinite jump
         if _G.InfiniteJumpConnection then
             _G.InfiniteJumpConnection:Disconnect()
             _G.InfiniteJumpConnection = nil
         end
         _G.InfiniteJumpEnabled = false
+        _G.SilentAimbotEnabled = false
         print("UI Closed")
     end
 })
@@ -35,13 +34,12 @@ local Tab = Window:MakeTab({
     PremiumOnly = false
 })
 
--- Create Speed Controls Section
 Tab:AddSection({
     Name = "Player Controls"
 })
 
--- Speed Slider (0 to 100)
-local SpeedSlider = Tab:AddSlider({
+-- Speed Slider
+Tab:AddSlider({
     Name = "Player Speed",
     Min = 0,
     Max = 100,
@@ -74,14 +72,11 @@ Tab:AddSlider({
     end
 })
 
--- Infinite Jump Toggle
+-- Infinite Jump
 _G.InfiniteJumpEnabled = false
 local UIS = game:GetService("UserInputService")
 
-if _G.InfiniteJumpConnection then
-    _G.InfiniteJumpConnection:Disconnect()
-end
-
+if _G.InfiniteJumpConnection then _G.InfiniteJumpConnection:Disconnect() end
 _G.InfiniteJumpConnection = UIS.JumpRequest:Connect(function()
     if _G.InfiniteJumpEnabled then
         local player = game.Players.LocalPlayer
@@ -99,7 +94,57 @@ Tab:AddToggle({
     end
 })
 
--- Destroy UI Button
+-- Silent Aimbot
+_G.SilentAimbotEnabled = false
+Tab:AddToggle({
+    Name = "Silent Aimbot",
+    Default = false,
+    Callback = function(state)
+        _G.SilentAimbotEnabled = state
+    end
+})
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local RunService = game:GetService("RunService")
+
+local function getClosestToCrosshair()
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
+            local pos = player.Character.HumanoidRootPart.Position
+            local screenPos, onScreen = Camera:WorldToViewportPoint(pos)
+            local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(Mouse.X, Mouse.Y)).Magnitude
+            if onScreen and dist < shortestDistance then
+                closestPlayer = player
+                shortestDistance = dist
+            end
+        end
+    end
+    return closestPlayer
+end
+
+local mt = getrawmetatable(game)
+local backup = mt.__namecall
+setreadonly(mt, false)
+
+mt.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+    if _G.SilentAimbotEnabled and tostring(self) == "Hit" and method == "FireServer" then
+        local target = getClosestToCrosshair()
+        if target and target.Character and target.Character:FindFirstChild("Head") then
+            args[1] = target.Character.Head.Position
+            return backup(self, unpack(args))
+        end
+    end
+    return backup(self, ...)
+end)
+setreadonly(mt, true)
+
+-- Destroy UI
 Tab:AddButton({
     Name = "Destroy UI",
     Callback = function()
@@ -107,5 +152,5 @@ Tab:AddButton({
     end
 })
 
--- Final Init (required)
+-- Init
 OrionLib:Init()
