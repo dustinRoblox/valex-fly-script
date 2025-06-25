@@ -1,4 +1,3 @@
--- Universal Hub | OrionLib UI with Game Auto-Detection for All Games
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/jensonhirst/Orion/main/source"))()
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -32,9 +31,10 @@ playerTab:AddSlider({
     Max = 100,
     Default = 16,
     Callback = function(v)
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("Humanoid") then
-            char.Humanoid.WalkSpeed = v
+        local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local humanoid = char:FindFirstChildWhichIsA("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = v
         end
     end
 })
@@ -45,9 +45,10 @@ playerTab:AddSlider({
     Max = 100,
     Default = 50,
     Callback = function(v)
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("Humanoid") then
-            char.Humanoid.JumpPower = v
+        local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local humanoid = char:FindFirstChildWhichIsA("Humanoid")
+        if humanoid then
+            humanoid.JumpPower = v
         end
     end
 })
@@ -74,15 +75,21 @@ playerTab:AddToggle({
     end
 })
 
+local infJumpConnection
 playerTab:AddToggle({
     Name = "Infinite Jump",
     Default = false,
     Callback = function(state)
+        if infJumpConnection then
+            infJumpConnection:Disconnect()
+            infJumpConnection = nil
+        end
         if state then
-            game:GetService("UserInputService").JumpRequest:Connect(function()
+            infJumpConnection = game:GetService("UserInputService").JumpRequest:Connect(function()
                 local char = LocalPlayer.Character
-                if char and char:FindFirstChildOfClass("Humanoid") then
-                    char:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
+                local humanoid = char and char:FindFirstChildWhichIsA("Humanoid")
+                if humanoid then
+                    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
                 end
             end)
         end
@@ -124,7 +131,7 @@ combatTab:AddToggle({
     Default = false,
     Callback = function(state)
         print("ESP toggled: ", state)
-        -- You can customize ESP logic here per game
+        -- Placeholder: ESP logic can be implemented per-game
     end
 })
 
@@ -154,7 +161,5 @@ settingsTab:AddButton({
     end
 })
 
--- Auto-Add Game-Specific Notes
 mainTab:AddParagraph("Note", "Universal Hub loaded. Adapted for: " .. gameName)
-
 OrionLib:Init()
