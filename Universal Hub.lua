@@ -1,202 +1,213 @@
--- // Load Orion Library
-local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/jensonhirst/Orion/main/source"))()
+--// Universal Hub - Polished Version (Dark Theme + Sound FX)
 
--- // Services
+local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/jensonhirst/Orion/main/source"))()
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local SoundService = game:GetService("SoundService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
-local ESPDrawings = {}
-local speedConn, jumpConn, noclipConn, espConn
 
--- // Cleanup on Exit
-local function Cleanup()
-    if speedConn then speedConn:Disconnect() end
-    if jumpConn then jumpConn:Disconnect() end
-    if noclipConn then noclipConn:Disconnect() end
-    if espConn then espConn:Disconnect() end
-    for _, box in pairs(ESPDrawings) do
-        box:Remove()
-    end
+-- Sound FX Helper
+local function playSound(id)
+	local sound = Instance.new("Sound")
+	sound.SoundId = "rbxassetid://" .. id
+	sound.Volume = 1
+	sound.Parent = SoundService
+	sound:Play()
+	game.Debris:AddItem(sound, 3)
 end
 
--- // Create Window
+-- Cleanup Trackers
+local speedConn, jumpConn, noclipConn, espConn
+local ESPDrawings = {}
+
+-- Hub Window
 local Window = OrionLib:MakeWindow({
-    Name = "Universal Hub",
-    HidePremium = false,
-    SaveConfig = true,
-    ConfigFolder = "UniversalHub",
-    IntroText = "Universal Hub • v1.0",
-    CloseCallback = Cleanup
+	Name = "Universal Hub",
+	HidePremium = false,
+	SaveConfig = true,
+	ConfigFolder = "UniversalHub",
+	IntroText = "Universal Hub • v1.0",
+	IntroIcon = "rbxassetid://4483345998",
+	Icon = "rbxassetid://4483345998",
+	Theme = {
+		Main = Color3.fromRGB(20, 20, 20),
+		TabBackground = Color3.fromRGB(30, 30, 30),
+		SectionBackground = Color3.fromRGB(25, 25, 25),
+		Text = Color3.fromRGB(200, 200, 200),
+		Accent = Color3.fromRGB(0, 120, 255)
+	},
+	CloseCallback = function()
+		if speedConn then speedConn:Disconnect() end
+		if jumpConn then jumpConn:Disconnect() end
+		if noclipConn then noclipConn:Disconnect() end
+		if espConn then espConn:Disconnect() end
+		for _, box in pairs(ESPDrawings) do box:Remove() end
+	end
 })
 
--- // Tabs
+-- Tabs
 local MainTab = Window:MakeTab({Name = "Main", Icon = "rbxassetid://4483345998"})
 local PlayersTab = Window:MakeTab({Name = "Players", Icon = "rbxassetid://4483345998"})
 local CombatTab = Window:MakeTab({Name = "Combat", Icon = "rbxassetid://4483345998"})
 local UtilityTab = Window:MakeTab({Name = "Utility", Icon = "rbxassetid://4483345998"})
 
--- // Main Tab
-MainTab:AddLabel("Universal Hub • Version 1.0")
-MainTab:AddParagraph("Credits", "Made by Dustin 💻")
+-- Main Tab
+MainTab:AddLabel("Universal Hub • v1.0")
+MainTab:AddParagraph("Credits", "Scripted by ChatGPT & Dustin")
 
--- // Players Tab
+-- Players Tab
 PlayersTab:AddSlider({
-    Name = "Speed Boost",
-    Min = 16, Max = 100, Default = 16,
-    Callback = function(v)
-        if speedConn then speedConn:Disconnect() end
-        speedConn = RunService.Heartbeat:Connect(function()
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("Humanoid") then
-                char.Humanoid.WalkSpeed = v
-            end
-        end)
-    end
+	Name = "Speed Boost",
+	Min = 16,
+	Max = 100,
+	Default = 16,
+	Callback = function(v)
+		playSound("9118823102")
+		if speedConn then speedConn:Disconnect() end
+		speedConn = RunService.Heartbeat:Connect(function()
+			local char = LocalPlayer.Character
+			if char and char:FindFirstChild("Humanoid") then
+				char.Humanoid.WalkSpeed = v
+			end
+		end)
+	end
 })
 
 PlayersTab:AddSlider({
-    Name = "Jump Boost",
-    Min = 50, Max = 100, Default = 50,
-    Callback = function(v)
-        if jumpConn then jumpConn:Disconnect() end
-        jumpConn = RunService.Heartbeat:Connect(function()
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("Humanoid") then
-                char.Humanoid.JumpPower = v
-            end
-        end)
-    end
+	Name = "Jump Boost",
+	Min = 50,
+	Max = 100,
+	Default = 50,
+	Callback = function(v)
+		playSound("9118823102")
+		if jumpConn then jumpConn:Disconnect() end
+		jumpConn = RunService.Heartbeat:Connect(function()
+			local char = LocalPlayer.Character
+			if char and char:FindFirstChild("Humanoid") then
+				char.Humanoid.JumpPower = v
+			end
+		end)
+	end
 })
 
 PlayersTab:AddToggle({
-    Name = "Noclip",
-    Default = false,
-    Callback = function(toggled)
-        if noclipConn then noclipConn:Disconnect() end
-        if toggled then
-            noclipConn = RunService.Stepped:Connect(function()
-                local char = LocalPlayer.Character
-                if char then
-                    for _, part in ipairs(char:GetDescendants()) do
-                        if part:IsA("BasePart") then
-                            part.CanCollide = false
-                        end
-                    end
-                end
-            end)
-        else
-            local char = LocalPlayer.Character
-            if char then
-                for _, part in ipairs(char:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.CanCollide = true
-                    end
-                end
-            end
-        end
-    end
+	Name = "Noclip",
+	Default = false,
+	Callback = function(state)
+		playSound("9118823102")
+		if noclipConn then noclipConn:Disconnect() end
+		if state then
+			noclipConn = RunService.Stepped:Connect(function()
+				local char = LocalPlayer.Character
+				if char then
+					for _, part in pairs(char:GetChildren()) do
+						if part:IsA("BasePart") then
+							part.CanCollide = false
+						end
+					end
+				end
+			end)
+		else
+			local char = LocalPlayer.Character
+			if char then
+				for _, part in pairs(char:GetChildren()) do
+					if part:IsA("BasePart") then
+						part.CanCollide = true
+					end
+				end
+			end
+		end
+	end
 })
 
-PlayersTab:AddToggle({
-    Name = "Invisible",
-    Default = false,
-    Callback = function(state)
-        local char = LocalPlayer.Character
-        if char then
-            for _, part in ipairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.Transparency = state and 1 or 0
-                    if part:FindFirstChildOfClass("Decal") then
-                        part:FindFirstChildOfClass("Decal").Transparency = state and 1 or 0
-                    end
-                end
-            end
-        end
-    end
-})
-
--- // Combat Tab
+-- Combat Tab
 CombatTab:AddToggle({
-    Name = "ESP (Player Box)",
-    Default = false,
-    Callback = function(state)
-        if espConn then espConn:Disconnect() end
-        for _, box in pairs(ESPDrawings) do
-            box:Remove()
-        end
-        ESPDrawings = {}
+	Name = "ESP",
+	Default = false,
+	Callback = function(state)
+		playSound("9118823102")
+		if espConn then espConn:Disconnect() end
+		for _, d in pairs(ESPDrawings) do d:Remove() end
+		ESPDrawings = {}
 
-        if state then
-            espConn = RunService.RenderStepped:Connect(function()
-                for _, player in ipairs(Players:GetPlayers()) do
-                    if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
-                        local head = player.Character.Head
-                        local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
-
-                        if onScreen then
-                            if not ESPDrawings[player] then
-                                local box = Drawing.new("Square")
-                                box.Color = Color3.new(1, 0, 0)
-                                box.Thickness = 2
-                                box.Size = Vector2.new(50, 50)
-                                box.Filled = false
-                                ESPDrawings[player] = box
-                            end
-                            ESPDrawings[player].Position = Vector2.new(pos.X - 25, pos.Y - 25)
-                            ESPDrawings[player].Visible = true
-                        elseif ESPDrawings[player] then
-                            ESPDrawings[player].Visible = false
-                        end
-                    end
-                end
-            end)
-        end
-    end
+		if state then
+			espConn = RunService.RenderStepped:Connect(function()
+				for _, p in pairs(Players:GetPlayers()) do
+					if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
+						local head = p.Character.Head
+						local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
+						if onScreen then
+							if not ESPDrawings[p] then
+								local box = Drawing.new("Square")
+								box.Color = Color3.new(1, 0, 0)
+								box.Thickness = 2
+								box.Filled = false
+								ESPDrawings[p] = box
+							end
+							local box = ESPDrawings[p]
+							box.Position = Vector2.new(pos.X - 25, pos.Y - 25)
+							box.Size = Vector2.new(50, 50)
+							box.Visible = true
+						else
+							if ESPDrawings[p] then ESPDrawings[p].Visible = false end
+						end
+					end
+				end
+			end)
+		end
+	end
 })
 
--- // Utility Tab — Teleport Dropdown + Quit
-local playerNames = {}
-for _, p in ipairs(Players:GetPlayers()) do
-    if p.Name ~= LocalPlayer.Name then
-        table.insert(playerNames, p.Name)
-    end
-end
-
-local tpDropdown = UtilityTab:AddDropdown({
-    Name = "Teleport to Player",
-    Default = "",
-    Options = playerNames,
-    Callback = function(name)
-        local target = Players:FindFirstChild(name)
-        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-            LocalPlayer.Character:MoveTo(target.Character.HumanoidRootPart.Position + Vector3.new(0, 5, 0))
-        end
-    end
+-- Utility Tab
+UtilityTab:AddDropdown({
+	Name = "Teleport To Player",
+	Options = {},
+	Callback = function(name)
+		playSound("12222005")
+		local target = Players:FindFirstChild(name)
+		if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+			LocalPlayer.Character:PivotTo(target.Character.HumanoidRootPart.CFrame)
+		end
+	end
 })
-
-Players.PlayerAdded:Connect(function(plr)
-    table.insert(playerNames, plr.Name)
-    tpDropdown:Refresh(playerNames, true)
-end)
-
-Players.PlayerRemoving:Connect(function(plr)
-    for i, name in ipairs(playerNames) do
-        if name == plr.Name then
-            table.remove(playerNames, i)
-            break
-        end
-    end
-    tpDropdown:Refresh(playerNames, true)
-end)
 
 UtilityTab:AddButton({
-    Name = "Quit",
-    Callback = function()
-        LocalPlayer:Kick("Goodbye 👋")
-    end
+	Name = "Invisibility",
+	Callback = function()
+		playSound("138186576")
+		local char = LocalPlayer.Character
+		if char then
+			for _, v in pairs(char:GetDescendants()) do
+				if v:IsA("BasePart") or v:IsA("Decal") then
+					v.Transparency = 1
+				end
+			end
+			char.Head.face.Transparency = 1
+		end
+	end
 })
 
--- // Launch UI
+UtilityTab:AddButton({
+	Name = "Quit Hub",
+	Callback = function()
+		playSound("12222005")
+		LocalPlayer:Kick("You left Universal Hub.")
+	end
+})
+
+-- Auto-refresh dropdown names
+spawn(function()
+	while task.wait(5) do
+		local names = {}
+		for _, p in pairs(Players:GetPlayers()) do
+			table.insert(names, p.Name)
+		end
+		pcall(function()
+			UtilityTab.Flags["Teleport To Player"]:Refresh(names)
+		end)
+	end
+end)
+
 OrionLib:Init()
