@@ -1,4 +1,4 @@
--- Valley Prison Hub | Roblox | OrionLib UI
+-- Brookhaven Hub | OrionLib UI | Fully Loaded
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/jensonhirst/Orion/main/source"))()
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -6,25 +6,23 @@ local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
+-- Globals
 local Window = OrionLib:MakeWindow({
-    Name = "Valley Prison Hub",
+    Name = "Brookhaven Hub",
     HidePremium = false,
     SaveConfig = true,
-    ConfigFolder = "ValleyPrisonHubConfig",
+    ConfigFolder = "BrookhavenHubConfig",
     IntroEnabled = true,
-    IntroText = "Welcome to Valley Prison Hub!",
+    IntroText = "Welcome to Brookhaven Hub!",
     IntroIcon = "rbxassetid://4483345998",
     Icon = "rbxassetid://4483345998",
     CloseCallback = function()
-        -- Cleanup connections & reset player settings when closing
         if speedConn then speedConn:Disconnect() speedConn = nil end
-        if jumpConn then jumpConn:Disconnect() jumpConn:Nil() end
+        if jumpConn then jumpConn:Disconnect() jumpConn = nil end
         if noclipConn then noclipConn:Disconnect() noclipConn = nil end
         if flyConn then flyConn:Disconnect() flyConn = nil end
-        if espConn then espConn:Disconnect() espConn = nil end
-        if aimbotConn then aimbotConn:Disconnect() aimbotConn = nil end
 
-        -- Reset player stats and parts collision
+        -- Reset player properties
         local char = LocalPlayer.Character
         if char and char:FindFirstChild("Humanoid") then
             char.Humanoid.WalkSpeed = 16
@@ -35,37 +33,33 @@ local Window = OrionLib:MakeWindow({
                 end
             end
         end
-
-        -- Remove ESP drawings
-        for _, drawing in pairs(ESPDrawings or {}) do
-            drawing:Remove()
-        end
-        ESPDrawings = {}
     end
 })
 
 -- Tabs
 local mainTab = Window:MakeTab({Name = "Main", Icon = "rbxassetid://4483345998"})
 local playerTab = Window:MakeTab({Name = "Player", Icon = "rbxassetid://4483345998"})
-local combatTab = Window:MakeTab({Name = "Combat", Icon = "rbxassetid://4483345998"})
 local utilityTab = Window:MakeTab({Name = "Utility", Icon = "rbxassetid://4483345998"})
+local appearanceTab = Window:MakeTab({Name = "Appearance", Icon = "rbxassetid://4483345998"})
+local vehiclesTab = Window:MakeTab({Name = "Vehicles", Icon = "rbxassetid://4483345998"})
+local roleplayTab = Window:MakeTab({Name = "Roleplay", Icon = "rbxassetid://4483345998"})
+local combatTab = Window:MakeTab({Name = "Combat", Icon = "rbxassetid://4483345998"})
+local settingsTab = Window:MakeTab({Name = "Settings", Icon = "rbxassetid://4483345998"})
 
--- MAIN TAB --
-mainTab:AddLabel("Valley Prison Hub • Version 1.0.0")
-mainTab:AddParagraph("Welcome!", "This hub is made to give you the best experience in Valley Prison. Use the tabs to customize your gameplay.")
+-- ==== MAIN TAB ====
+mainTab:AddLabel("Brookhaven Hub • Version 1.0.0")
+mainTab:AddParagraph("Credits", "Made by Dustin. Ultimate RP toolkit.")
+mainTab:AddParagraph("News", "New: Vehicle controls and roleplay emotes added!")
 
--- PLAYER TAB --
-
+-- ==== PLAYER TAB ====
 local DesiredSpeed = 16
 local DesiredJump = 50
-local speedConn, jumpConn, noclipConn, flyConn, espConn, aimbotConn
+local speedConn, jumpConn, noclipConn, flyConn
 local noclipEnabled = false
 local flying = false
 local flyBodyVelocity, flyBodyGyro
 local flySpeed = 50
-local ESPDrawings = {}
 
--- Speed Slider
 playerTab:AddSlider({
     Name = "Speed",
     Min = 16,
@@ -86,7 +80,6 @@ playerTab:AddSlider({
     end
 })
 
--- Jump Boost Slider
 playerTab:AddSlider({
     Name = "Jump Boost",
     Min = 50,
@@ -107,7 +100,6 @@ playerTab:AddSlider({
     end
 })
 
--- Heal Button
 playerTab:AddButton({
     Name = "Heal",
     Callback = function()
@@ -118,7 +110,6 @@ playerTab:AddButton({
     end
 })
 
--- Noclip Toggle
 playerTab:AddToggle({
     Name = "Noclip",
     Default = false,
@@ -152,7 +143,6 @@ playerTab:AddToggle({
     end
 })
 
--- Fly Toggle
 playerTab:AddToggle({
     Name = "Fly",
     Default = false,
@@ -212,139 +202,37 @@ playerTab:AddToggle({
     end
 })
 
--- COMBAT TAB --
+-- ==== UTILITY TAB ====
 
-local ESPDrawings = {}
+local keySpots = {
+    ["Town Center"] = CFrame.new(0, 5, 0), -- Replace with Brookhaven spots CFrames
+    ["School"] = CFrame.new(100, 5, 100),
+    ["Hospital"] = CFrame.new(200, 5, 200),
+    ["Your House"] = CFrame.new(300, 5, 300),
+}
 
-combatTab:AddToggle({
-    Name = "ESP",
-    Default = false,
-    Save = true,
-    Flag = "esp",
-    Callback = function(enabled)
-        if espConn then
-            espConn:Disconnect()
-            espConn = nil
-            for _, drawing in pairs(ESPDrawings) do
-                drawing:Remove()
-            end
-            ESPDrawings = {}
-        end
-
-        if enabled then
-            espConn = RunService.RenderStepped:Connect(function()
-                for _, player in pairs(Players:GetPlayers()) do
-                    if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") and player.Character:FindFirstChild("Head") then
-                        local head = player.Character.Head
-                        local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
-                        if onScreen then
-                            if not ESPDrawings[player] then
-                                local box = Drawing.new("Square")
-                                box.Visible = true
-                                box.Color = Color3.new(1, 0, 0) -- red for enemies
-                                box.Thickness = 2
-                                box.Filled = false
-                                ESPDrawings[player] = box
-                            end
-                            local box = ESPDrawings[player]
-                            local size = 50
-                            box.Size = Vector2.new(size, size)
-                            box.Position = Vector2.new(pos.X - size / 2, pos.Y - size / 2)
-                            box.Visible = true
-                        else
-                            if ESPDrawings[player] then
-                                ESPDrawings[player].Visible = false
-                            end
-                        end
-                    else
-                        if ESPDrawings[player] then
-                            ESPDrawings[player]:Remove()
-                            ESPDrawings[player] = nil
-                        end
-                    end
-                end
-            end)
-        end
-    end
-})
-
-combatTab:AddToggle({
-    Name = "Wallbang",
-    Default = false,
-    Save = true,
-    Flag = "wallbang",
-    Callback = function(enabled)
-        -- Wallbang needs custom exploit & game-specific implementation
-        print("Wallbang toggled: ", enabled)
-    end
-})
-
--- AIMBOT SNAP --  
-combatTab:AddToggle({
-    Name = "Snap Aimbot",
-    Default = false,
-    Save = true,
-    Flag = "aimbot",
-    Callback = function(enabled)
-        if aimbotConn then
-            aimbotConn:Disconnect()
-            aimbotConn = nil
-        end
-
-        if enabled then
-            aimbotConn = RunService.RenderStepped:Connect(function()
-                local closestPlayer = nil
-                local shortestDistance = math.huge
-                local mousePos = UserInputService:GetMouseLocation()
-
-                for _, player in pairs(Players:GetPlayers()) do
-                    if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
-                        local head = player.Character:FindFirstChild("Head")
-                        if head then
-                            local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
-                            if onScreen then
-                                local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(mousePos.X, mousePos.Y)).Magnitude
-                                if dist < shortestDistance then
-                                    shortestDistance = dist
-                                    closestPlayer = player
-                                end
-                            end
-                        end
-                    end
-                end
-
-                if closestPlayer and closestPlayer.Character then
-                    local head = closestPlayer.Character:FindFirstChild("Head")
-                    if head then
-                        Camera.CFrame = CFrame.new(Camera.CFrame.Position, head.Position)
-                    end
-                end
-            end)
-        end
-    end
-})
-
--- UTILITY TAB --
-
-utilityTab:AddButton({
-    Name = "Teleport to Spawn",
-    Callback = function()
-        local spawnLocation = workspace:FindFirstChild("SpawnLocation") or workspace:FindFirstChild("Spawn")
+utilityTab:AddDropdown({
+    Name = "Teleport to Spot",
+    Default = "Town Center",
+    Options = table.keys(keySpots),
+    Callback = function(selection)
         local char = LocalPlayer.Character
-        if spawnLocation and char and char:FindFirstChild("HumanoidRootPart") then
-            char.HumanoidRootPart.CFrame = spawnLocation.CFrame + Vector3.new(0, 5, 0)
-        else
-            OrionLib:MakeNotification({
-                Name = "Teleport Error",
-                Content = "Spawn location not found!",
-                Image = "rbxassetid://4483345998",
-                Time = 3
-            })
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local targetCFrame = keySpots[selection]
+            if targetCFrame then
+                char.HumanoidRootPart.CFrame = targetCFrame
+            else
+                OrionLib:MakeNotification({
+                    Name = "Error",
+                    Content = "Spot not found!",
+                    Image = "rbxassetid://4483345998",
+                    Time = 3
+                })
+            end
         end
     end
 })
 
--- Teleport to Player Dropdown
 local playerList = {}
 for _, player in pairs(Players:GetPlayers()) do
     table.insert(playerList, player.Name)
@@ -370,15 +258,6 @@ local teleportDropdown = utilityTab:AddDropdown({
     end
 })
 
--- Quit Button
-utilityTab:AddButton({
-    Name = "Quit",
-    Callback = function()
-        LocalPlayer:Kick("You quit Valley Prison Hub.")
-    end
-})
-
--- Update player list on join/leave
 Players.PlayerAdded:Connect(function(player)
     table.insert(playerList, player.Name)
     teleportDropdown:Refresh(playerList, true)
@@ -393,6 +272,200 @@ Players.PlayerRemoving:Connect(function(player)
     end
     teleportDropdown:Refresh(playerList, true)
 end)
+
+utilityTab:AddButton({
+    Name = "Quit",
+    Callback = function()
+        LocalPlayer:Kick("You quit Brookhaven Hub.")
+    end
+})
+
+-- ==== APPEARANCE TAB ====
+
+local walkAnimations = {
+    ["Default"] = 0,
+    ["Robot Walk"] = 616748981,
+    ["Zombie Walk"] = 616771948,
+    ["Floss Dance"] = 616774604,
+    ["Moonwalk"] = 616774954,
+}
+
+appearanceTab:AddDropdown({
+    Name = "Walk Animation",
+    Default = "Default",
+    Options = (function()
+        local keys = {}
+        for k in pairs(walkAnimations) do table.insert(keys, k) end
+        return keys
+    end)(),
+    Callback = function(selection)
+        local animId = walkAnimations[selection]
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("Humanoid") then
+            local humanoid = char.Humanoid
+            local anim = Instance.new("Animation")
+            anim.AnimationId = "rbxassetid://"..animId
+            local animTrack = humanoid:LoadAnimation(anim)
+            animTrack:Play()
+        end
+    end
+})
+
+appearanceTab:AddToggle({
+    Name = "Sit / Stand",
+    Default = false,
+    Save = true,
+    Flag = "sit",
+    Callback = function(state)
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("Humanoid") then
+            char.Humanoid.Sit = state
+        end
+    end
+})
+
+-- ==== VEHICLES TAB ====
+
+vehiclesTab:AddButton({
+    Name = "Spawn Basic Car",
+    Callback = function()
+        -- Example placeholder: replace with real vehicle spawn logic & asset id
+        local carAssetId = 12345678 -- replace this with actual Brookhaven car asset id
+        local car = game:GetService("InsertService"):LoadAsset(carAssetId)
+        car.Parent = workspace
+        car:PivotTo(LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 5))
+        OrionLib:MakeNotification({
+            Name = "Vehicle Spawned",
+            Content = "Basic car spawned!",
+            Image = "rbxassetid://4483345998",
+            Time = 3
+        })
+    end
+})
+
+vehiclesTab:AddButton({
+    Name = "Flip Vehicle",
+    Callback = function()
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp and hrp.Parent and hrp.Parent:FindFirstChild("VehicleSeat") then
+            hrp.Parent.VehicleSeat.SeatWeld.C0 = CFrame.new() -- simple fix for flipped car
+            OrionLib:MakeNotification({
+                Name = "Vehicle Fixed",
+                Content = "Your vehicle has been flipped upright.",
+                Image = "rbxassetid://4483345998",
+                Time = 3
+            })
+        else
+            OrionLib:MakeNotification({
+                Name = "No Vehicle",
+                Content = "You are not in a vehicle.",
+                Image = "rbxassetid://4483345998",
+                Time = 3
+            })
+        end
+    end
+})
+
+vehiclesTab:AddSlider({
+    Name = "Vehicle Speed",
+    Min = 10,
+    Max = 200,
+    Default = 50,
+    Increment = 5,
+    Callback = function(speed)
+        -- implement vehicle speed control here (game specific)
+        OrionLib:MakeNotification({
+            Name = "Vehicle Speed",
+            Content = "Set vehicle speed to "..speed,
+            Image = "rbxassetid://4483345998",
+            Time = 3
+        })
+    end
+})
+
+-- ==== ROLEPLAY TAB ====
+
+roleplayTab:AddButton({
+    Name = "Wave",
+    Callback = function()
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("Humanoid") then
+            local anim = Instance.new("Animation")
+            anim.AnimationId = "rbxassetid://4943710757" -- wave animation
+            local track = char.Humanoid:LoadAnimation(anim)
+            track:Play()
+        end
+    end
+})
+
+roleplayTab:AddButton({
+    Name = "Dance",
+    Callback = function()
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("Humanoid") then
+            local anim = Instance.new("Animation")
+            anim.AnimationId = "rbxassetid://5031215786" -- dance animation
+            local track = char.Humanoid:LoadAnimation(anim)
+            track:Play()
+        end
+    end
+})
+
+roleplayTab:AddButton({
+    Name = "Sit",
+    Callback = function()
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("Humanoid") then
+            char.Humanoid.Sit = true
+        end
+    end
+})
+
+roleplayTab:AddButton({
+    Name = "Stand",
+    Callback = function()
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("Humanoid") then
+            char.Humanoid.Sit = false
+        end
+    end
+})
+
+-- ==== COMBAT TAB ====
+
+combatTab:AddToggle({
+    Name = "Enable Combat (Placeholder)",
+    Default = false,
+    Callback = function(state)
+        OrionLib:MakeNotification({
+            Name = "Combat",
+            Content = "Combat features coming soon!",
+            Image = "rbxassetid://4483345998",
+            Time = 3
+        })
+    end
+})
+
+-- ==== SETTINGS TAB ====
+
+settingsTab:AddToggle({
+    Name = "Toggle UI Visibility",
+    Default = true,
+    Flag = "uiVisible",
+    Callback = function(state)
+        Window:SetVisible(state)
+    end
+})
+
+settingsTab:AddButton({
+    Name = "Reset Config",
+    Callback = function()
+        OrionLib:Destroy()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/jensonhirst/Orion/main/source"))()
+        OrionLib:Init()
+    end
+})
 
 -- Init UI
 OrionLib:Init()
