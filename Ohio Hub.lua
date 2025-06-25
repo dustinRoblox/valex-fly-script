@@ -1,13 +1,10 @@
--- Load Orion Library
+-- Ohio Hub | Stable Version
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/jensonhirst/Orion/main/source"))()
-
--- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- WINDOW
 local Window = OrionLib:MakeWindow({
     Name = "Ohio Hub",
     HidePremium = false,
@@ -16,37 +13,71 @@ local Window = OrionLib:MakeWindow({
     IntroEnabled = true,
     IntroText = "Welcome to Ohio Hub!",
     IntroIcon = "rbxassetid://4483345998",
-    Icon = "rbxassetid://4483345998"
+    Icon = "rbxassetid://4483345998",
+    CloseCallback = function()
+        -- Disconnect all active connections on close
+        if speedConn then speedConn:Disconnect() speedConn = nil end
+        if jumpConn then jumpConn:Disconnect() jumpConn = nil end
+        if noclipConn then noclipConn:Disconnect() noclipConn = nil end
+        if espConn then espConn:Disconnect() espConn = nil end
+
+        -- Remove all ESP drawings
+        for _, drawing in pairs(ESPDrawings) do
+            drawing:Remove()
+        end
+        ESPDrawings = {}
+
+        -- Reset walk/jump speed
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.WalkSpeed = 16
+            LocalPlayer.Character.Humanoid.JumpPower = 50
+            -- Reset CanCollide for noclip parts
+            for _, part in pairs(LocalPlayer.Character:GetChildren()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = true
+                end
+            end
+        end
+    end
 })
 
--- MAIN TAB
-local mainTab = Window:MakeTab({ Name = "Main", Icon = "rbxassetid://4483345998" })
+-- Tabs
+local mainTab = Window:MakeTab({Name = "Main", Icon = "rbxassetid://4483345998"})
+local playerTab = Window:MakeTab({Name = "Players", Icon = "rbxassetid://4483345998"})
+local combatTab = Window:MakeTab({Name = "Combat", Icon = "rbxassetid://4483345998"})
+local utilityTab = Window:MakeTab({Name = "Utility", Icon = "rbxassetid://4483345998"})
+
+-- Main Tab
 mainTab:AddLabel("Ohio Hub • Version v1.1.0")
 mainTab:AddParagraph("Credits", "Created by Dustin using Orion Library")
 
--- PLAYERS TAB
-local playerTab = Window:MakeTab({ Name = "Players", Icon = "rbxassetid://4483345998" })
-
--- Speed Bypass
+-- PLAYER TAB VARIABLES
+local speedConn, jumpConn, noclipConn
 local DesiredSpeed = 16
-local speedConn
+local DesiredJump = 50
+local noclipEnabled = false
+
+-- SPEED SLIDER
 playerTab:AddSlider({
     Name = "Speed",
     Min = 16,
     Max = 100,
     Default = 16,
     Increment = 1,
+    Save = true,
+    Flag = "speed",
     Callback = function(v)
         DesiredSpeed = v
-        if v > 16 and not speedConn then
+        if speedConn then speedConn:Disconnect() speedConn = nil end
+        if v > 16 then
             speedConn = RunService.Heartbeat:Connect(function()
-                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-                    LocalPlayer.Character.Humanoid.WalkSpeed = DesiredSpeed
+                local char = LocalPlayer.Character
+                if char and char:FindFirstChild("Humanoid") then
+                    char.Humanoid.WalkSpeed = DesiredSpeed
                 end
             end)
-        elseif v == 16 and speedConn then
-            speedConn:Disconnect()
-            speedConn = nil
+        else
+            -- Reset speed to 16
             if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
                 LocalPlayer.Character.Humanoid.WalkSpeed = 16
             end
@@ -54,26 +85,27 @@ playerTab:AddSlider({
     end
 })
 
--- Jump Boost
-local DesiredJump = 50
-local jumpConn
+-- JUMP BOOST SLIDER
 playerTab:AddSlider({
     Name = "Jump Boost",
     Min = 50,
     Max = 100,
     Default = 50,
     Increment = 1,
+    Save = true,
+    Flag = "jump",
     Callback = function(v)
         DesiredJump = v
-        if v > 50 and not jumpConn then
+        if jumpConn then jumpConn:Disconnect() jumpConn = nil end
+        if v > 50 then
             jumpConn = RunService.Heartbeat:Connect(function()
-                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-                    LocalPlayer.Character.Humanoid.JumpPower = DesiredJump
+                local char = LocalPlayer.Character
+                if char and char:FindFirstChild("Humanoid") then
+                    char.Humanoid.JumpPower = DesiredJump
                 end
             end)
-        elseif v == 50 and jumpConn then
-            jumpConn:Disconnect()
-            jumpConn = nil
+        else
+            -- Reset jump to 50
             if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
                 LocalPlayer.Character.Humanoid.JumpPower = 50
             end
@@ -81,105 +113,136 @@ playerTab:AddSlider({
     end
 })
 
--- Heal
+-- HEAL BUTTON
 playerTab:AddButton({
     Name = "Heal",
     Callback = function()
-        local hm = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
-        if hm then
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("Humanoid") then
+            local hm = char.Humanoid
             hm.Health = hm.MaxHealth
         end
     end
 })
 
--- Noclip
-local noclipConn
+-- NOCLIP TOGGLE
 playerTab:AddToggle({
     Name = "Noclip",
     Default = false,
+    Save = true,
+    Flag = "noclip",
     Callback = function(state)
-        if state and not noclipConn then
+        noclipEnabled = state
+        if noclipConn then
+            noclipConn:Disconnect()
+            noclipConn = nil
+        end
+        if state then
             noclipConn = RunService.Stepped:Connect(function()
-                if LocalPlayer.Character then
-                    for _, part in ipairs(LocalPlayer.Character:GetChildren()) do
+                local char = LocalPlayer.Character
+                if char then
+                    for _, part in pairs(char:GetChildren()) do
                         if part:IsA("BasePart") then
                             part.CanCollide = false
                         end
                     end
                 end
             end)
-        elseif not state and noclipConn then
-            noclipConn:Disconnect()
-            noclipConn = nil
-        end
-    end
-})
-
--- COMBAT TAB
-local combatTab = Window:MakeTab({ Name = "Combat", Icon = "rbxassetid://4483345998" })
-
--- ESP
-local ESPConn
-local function createESP()
-    if ESPConn then return end
-    ESPConn = RunService.RenderStepped:Connect(function()
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
-                local head = player.Character.Head
-                local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
-                if onScreen then
-                    -- draw boxes/text here or use Drawing API
+        else
+            -- Reset CanCollide to true when noclip off
+            local char = LocalPlayer.Character
+            if char then
+                for _, part in pairs(char:GetChildren()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = true
+                    end
                 end
             end
         end
-        wait(0.05)
-    end)
-end
-
-local function destroyESP()
-    if ESPConn then
-        ESPConn:Disconnect()
-        ESPConn = nil
     end
-end
+})
 
+-- COMBAT TAB VARIABLES
+local espConn
+local ESPDrawings = {}
+
+-- ESP TOGGLE
 combatTab:AddToggle({
     Name = "ESP",
     Default = false,
-    Callback = function(val)
-        if val then
-            createESP()
-        else
-            destroyESP()
+    Save = true,
+    Flag = "esp",
+    Callback = function(enabled)
+        if espConn then
+            espConn:Disconnect()
+            espConn = nil
+            -- Remove all drawings
+            for _, drawing in pairs(ESPDrawings) do
+                drawing:Remove()
+            end
+            ESPDrawings = {}
+        end
+
+        if enabled then
+            espConn = RunService.RenderStepped:Connect(function()
+                -- debounce to reduce FPS load
+                task.wait(0.05)
+
+                for _, player in pairs(Players:GetPlayers()) do
+                    if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") and player.Character:FindFirstChild("Head") then
+                        local head = player.Character.Head
+                        local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                        if onScreen then
+                            if not ESPDrawings[player] then
+                                -- Create new Drawing objects
+                                local box = Drawing.new("Square")
+                                box.Visible = true
+                                box.Color = Color3.new(1, 0, 0)
+                                box.Thickness = 2
+                                box.Filled = false
+                                ESPDrawings[player] = box
+                            end
+                            local box = ESPDrawings[player]
+                            local size = 50
+                            box.Size = Vector2.new(size, size)
+                            box.Position = Vector2.new(pos.X - size / 2, pos.Y - size / 2)
+                            box.Visible = true
+                        else
+                            if ESPDrawings[player] then
+                                ESPDrawings[player].Visible = false
+                            end
+                        end
+                    else
+                        if ESPDrawings[player] then
+                            ESPDrawings[player]:Remove()
+                            ESPDrawings[player] = nil
+                        end
+                    end
+                end
+            end)
         end
     end
 })
 
--- Wallbang (placeholder for raycast editing or remote trigger bypass)
+-- WALLBANG TOGGLE (Placeholder, no real bypass)
 combatTab:AddToggle({
     Name = "Wallbang",
     Default = false,
+    Save = true,
+    Flag = "wallbang",
     Callback = function(enabled)
+        -- No functional code because actual wallbang bypass needs exploit specifics
         print("Wallbang toggled:", enabled)
-        -- integrate with actual raycast or hitbox bypass if possible
     end
 })
 
--- UTILITY TAB
-local utilTab = Window:MakeTab({ Name = "Utility", Icon = "rbxassetid://4483345998" })
-utilTab:AddButton({
+-- UTILITY TAB QUIT BUTTON
+utilityTab:AddButton({
     Name = "Quit",
     Callback = function()
-        LocalPlayer:Kick("Quit button pressed from Ohio Hub.")
+        LocalPlayer:Kick("You quit Ohio Hub.")
     end
 })
 
--- INIT
+-- Init UI
 OrionLib:Init()
-
--- CLEANUP
-Window:MakeNotification({
-    Name = "Ohio Hub Loaded",
-    Content = "Script ready!",
-    Time = 4
-})
