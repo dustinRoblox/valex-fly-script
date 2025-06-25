@@ -1,18 +1,41 @@
---// Universal Hub Menu using OrionLib //--
+-- Universal Hub using OrionLib --
 
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/jensonhirst/Orion/main/source"))()
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
+local TeleportService = game:GetService("TeleportService")
+
+local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- Disconnects
+-- Connections
 local speedConn, jumpConn, noclipConn, espConn = nil, nil, nil, nil
-local flyConn = nil
-local flySpeed = 50
+local noclipEnabled = false
 local ESPDrawings = {}
 
--- UI Setup
+local function cleanup()
+    if speedConn then speedConn:Disconnect() speedConn = nil end
+    if jumpConn then jumpConn:Disconnect() jumpConn = nil end
+    if noclipConn then noclipConn:Disconnect() noclipConn = nil end
+    if espConn then espConn:Disconnect() espConn = nil end
+
+    for _, box in pairs(ESPDrawings) do
+        box:Remove()
+    end
+    ESPDrawings = {}
+
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("Humanoid") then
+        char.Humanoid.WalkSpeed = 16
+        char.Humanoid.JumpPower = 50
+        for _, part in pairs(char:GetChildren()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+    end
+end
+
 local Window = OrionLib:MakeWindow({
     Name = "Universal Hub",
     HidePremium = false,
@@ -22,18 +45,7 @@ local Window = OrionLib:MakeWindow({
     IntroText = "Universal Hub Loaded!",
     IntroIcon = "rbxassetid://4483345998",
     Icon = "rbxassetid://4483345998",
-    CloseCallback = function()
-        for _, v in pairs({speedConn, jumpConn, noclipConn, espConn, flyConn}) do if v then v:Disconnect() end end
-        for _, box in pairs(ESPDrawings) do box:Remove() end
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("Humanoid") then
-            char.Humanoid.WalkSpeed = 16
-            char.Humanoid.JumpPower = 50
-            for _, p in pairs(char:GetChildren()) do
-                if p:IsA("BasePart") then p.CanCollide = true end
-            end
-        end
-    end
+    CloseCallback = cleanup
 })
 
 -- Tabs
@@ -46,13 +58,15 @@ local utilityTab = Window:MakeTab({Name = "Utility", Icon = "rbxassetid://448334
 mainTab:AddLabel("Universal Hub v1.0")
 mainTab:AddParagraph("Credits", "Made by Dustin with OrionLib")
 
--- Players Tab
+-- Player Tab
 playerTab:AddSlider({
     Name = "Speed",
     Min = 16,
     Max = 100,
     Default = 16,
     Increment = 1,
+    Save = true,
+    Flag = "speed",
     Callback = function(v)
         if speedConn then speedConn:Disconnect() end
         speedConn = RunService.Heartbeat:Connect(function()
@@ -70,6 +84,8 @@ playerTab:AddSlider({
     Max = 100,
     Default = 50,
     Increment = 1,
+    Save = true,
+    Flag = "jump",
     Callback = function(v)
         if jumpConn then jumpConn:Disconnect() end
         jumpConn = RunService.Heartbeat:Connect(function()
@@ -84,22 +100,30 @@ playerTab:AddSlider({
 playerTab:AddToggle({
     Name = "Noclip",
     Default = false,
+    Save = true,
+    Flag = "noclip",
     Callback = function(state)
-        if noclipConn then noclipConn:Disconnect() end
+        noclipEnabled = state
+        if noclipConn then noclipConn:Disconnect() noclipConn = nil end
+
         if state then
             noclipConn = RunService.Stepped:Connect(function()
                 local char = LocalPlayer.Character
                 if char then
-                    for _, p in pairs(char:GetChildren()) do
-                        if p:IsA("BasePart") then p.CanCollide = false end
+                    for _, part in pairs(char:GetChildren()) do
+                        if part:IsA("BasePart") then
+                            part.CanCollide = false
+                        end
                     end
                 end
             end)
         else
             local char = LocalPlayer.Character
             if char then
-                for _, p in pairs(char:GetChildren()) do
-                    if p:IsA("BasePart") then p.CanCollide = true end
+                for _, part in pairs(char:GetChildren()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = true
+                    end
                 end
             end
         end
@@ -110,10 +134,18 @@ playerTab:AddToggle({
 combatTab:AddToggle({
     Name = "ESP",
     Default = false,
+    Save = true,
+    Flag = "esp",
     Callback = function(enabled)
-        if espConn then espConn:Disconnect() end
-        for _, box in pairs(ESPDrawings) do box:Remove() end
-        ESPDrawings = {}
+        if espConn then
+            espConn:Disconnect()
+            espConn = nil
+            for _, box in pairs(ESPDrawings) do
+                box:Remove()
+            end
+            ESPDrawings = {}
+        end
+
         if enabled then
             espConn = RunService.RenderStepped:Connect(function()
                 for _, player in pairs(Players:GetPlayers()) do
@@ -137,6 +169,11 @@ combatTab:AddToggle({
                                 ESPDrawings[player].Visible = false
                             end
                         end
+                    else
+                        if ESPDrawings[player] then
+                            ESPDrawings[player]:Remove()
+                            ESPDrawings[player] = nil
+                        end
                     end
                 end
             end)
@@ -148,15 +185,16 @@ combatTab:AddToggle({
 utilityTab:AddTextbox({
     Name = "Teleport to Player",
     Default = "",
-    Callback = function(playerName)
-        playerName = playerName:lower()
-        local target
+    Callback = function(input)
+        local playerName = input:lower()
+        local target = nil
         for _, player in pairs(Players:GetPlayers()) do
             if player.Name:lower():find(playerName) then
                 target = player
                 break
             end
         end
+
         if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
             LocalPlayer.Character:MoveTo(target.Character.HumanoidRootPart.Position)
         else
@@ -173,14 +211,16 @@ utilityTab:AddTextbox({
 utilityTab:AddButton({
     Name = "Rejoin Server",
     Callback = function()
-        game:GetService("TeleportService"):Teleport(game.PlaceId)
+        TeleportService:Teleport(game.PlaceId)
     end
 })
 
 utilityTab:AddButton({
     Name = "Reset Character",
     Callback = function()
-        LocalPlayer.Character:BreakJoints()
+        if LocalPlayer.Character then
+            LocalPlayer.Character:BreakJoints()
+        end
     end
 })
 
@@ -191,5 +231,5 @@ utilityTab:AddButton({
     end
 })
 
--- Init UI
+-- Initialize UI
 OrionLib:Init()
