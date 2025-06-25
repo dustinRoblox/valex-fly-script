@@ -1,11 +1,10 @@
--- Ohio Hub | Complete Stable Script
+-- Ohio Hub | Complete Stable Script w/ Flying
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/jensonhirst/Orion/main/source"))()
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- Create window
 local Window = OrionLib:MakeWindow({
     Name = "Ohio Hub",
     HidePremium = false,
@@ -16,12 +15,12 @@ local Window = OrionLib:MakeWindow({
     IntroIcon = "rbxassetid://4483345998",
     Icon = "rbxassetid://4483345998",
     CloseCallback = function()
-        -- Cleanup on close
         if speedConn then speedConn:Disconnect() speedConn = nil end
         if jumpConn then jumpConn:Disconnect() jumpConn = nil end
         if noclipConn then noclipConn:Disconnect() noclipConn = nil end
         if espConn then espConn:Disconnect() espConn = nil end
         if infMoneyConn then infMoneyConn:Disconnect() infMoneyConn = nil end
+        if flyConn then flyConn:Disconnect() flyConn = nil end
 
         for _, drawing in pairs(ESPDrawings) do
             drawing:Remove()
@@ -40,26 +39,24 @@ local Window = OrionLib:MakeWindow({
     end
 })
 
--- Tabs
 local mainTab = Window:MakeTab({Name = "Main", Icon = "rbxassetid://4483345998"})
 local playerTab = Window:MakeTab({Name = "Players", Icon = "rbxassetid://4483345998"})
 local combatTab = Window:MakeTab({Name = "Combat", Icon = "rbxassetid://4483345998"})
 local utilityTab = Window:MakeTab({Name = "Utility", Icon = "rbxassetid://4483345998"})
 
--- Main Tab: Version + Credits
 mainTab:AddLabel("Ohio Hub • Version v1.1.0")
 mainTab:AddParagraph("Credits", "Created by Dustin using Orion Library")
 
--- Variables
-local speedConn, jumpConn, noclipConn, infMoneyConn, espConn
+local speedConn, jumpConn, noclipConn, infMoneyConn, espConn, flyConn
 local DesiredSpeed = 16
 local DesiredJump = 50
 local noclipEnabled = false
 local ESPDrawings = {}
+local flying = false
+local flyBodyVelocity
+local flyBodyGyro
 
--- Players Tab
-
--- Speed Slider (16-100)
+-- Speed Slider
 playerTab:AddSlider({
     Name = "Speed",
     Min = 16,
@@ -86,7 +83,7 @@ playerTab:AddSlider({
     end
 })
 
--- Jump Boost Slider (50-100)
+-- Jump Boost Slider
 playerTab:AddSlider({
     Name = "Jump Boost",
     Min = 50,
@@ -113,7 +110,7 @@ playerTab:AddSlider({
     end
 })
 
--- Heal Button (Heals and maintains health for 5 sec)
+-- Heal Button
 playerTab:AddButton({
     Name = "Heal",
     Callback = function()
@@ -195,9 +192,73 @@ playerTab:AddToggle({
     end
 })
 
+-- Fly Toggle
+playerTab:AddToggle({
+    Name = "Fly",
+    Default = false,
+    Save = true,
+    Flag = "fly",
+    Callback = function(state)
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        flying = state
+
+        if flying and hrp then
+            flyBodyVelocity = Instance.new("BodyVelocity")
+            flyBodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+            flyBodyVelocity.Velocity = Vector3.new(0,0,0)
+            flyBodyVelocity.Parent = hrp
+
+            flyBodyGyro = Instance.new("BodyGyro")
+            flyBodyGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+            flyBodyGyro.Parent = hrp
+
+            local userInputService = game:GetService("UserInputService")
+
+            local function flyLoop()
+                local velocity = Vector3.new()
+                local camCF = workspace.CurrentCamera.CFrame
+                local speed = flySpeed
+
+                if userInputService:IsKeyDown(Enum.KeyCode.W) then
+                    velocity = velocity + camCF.LookVector
+                end
+                if userInputService:IsKeyDown(Enum.KeyCode.S) then
+                    velocity = velocity - camCF.LookVector
+                end
+                if userInputService:IsKeyDown(Enum.KeyCode.A) then
+                    velocity = velocity - camCF.RightVector
+                end
+                if userInputService:IsKeyDown(Enum.KeyCode.D) then
+                    velocity = velocity + camCF.RightVector
+                end
+                if userInputService:IsKeyDown(Enum.KeyCode.Space) then
+                    velocity = velocity + Vector3.new(0,1,0)
+                end
+                if userInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+                    velocity = velocity - Vector3.new(0,1,0)
+                end
+
+                if velocity.Magnitude > 0 then
+                    flyBodyVelocity.Velocity = velocity.Unit * flySpeed
+                else
+                    flyBodyVelocity.Velocity = Vector3.new(0,0,0)
+                end
+
+                flyBodyGyro.CFrame = camCF
+            end
+
+            flyConn = RunService.Heartbeat:Connect(flyLoop)
+        else
+            if flyBodyVelocity then flyBodyVelocity:Destroy() flyBodyVelocity = nil end
+            if flyBodyGyro then flyBodyGyro:Destroy() flyBodyGyro = nil end
+            if flyConn then flyConn:Disconnect() flyConn = nil end
+        end
+    end
+})
+
 -- Combat Tab
 
--- ESP Toggle
 combatTab:AddToggle({
     Name = "ESP",
     Default = false,
@@ -251,7 +312,6 @@ combatTab:AddToggle({
     end
 })
 
--- Wallbang Toggle (Placeholder)
 combatTab:AddToggle({
     Name = "Wallbang",
     Default = false,
@@ -259,7 +319,7 @@ combatTab:AddToggle({
     Flag = "wallbang",
     Callback = function(enabled)
         print("Wallbang toggled:", enabled)
-        -- Needs exploit-specific code, placeholder only
+        -- Placeholder: needs exploit-specific bypass
     end
 })
 
@@ -272,5 +332,4 @@ utilityTab:AddButton({
     end
 })
 
--- Init UI
 OrionLib:Init()
