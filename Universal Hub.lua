@@ -156,43 +156,40 @@ CombatTab:AddToggle({
     end
 })
 
--- // Utility Tab
-UtilityTab:AddTextbox({
-    Name = "Click to Teleport",
-    Default = "Enable & Click",
-    TextDisappear = true,
-    Callback = function()
-        local conn
-        conn = UserInputService.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                local mousePos = UserInputService:GetMouseLocation()
-                local unitRay = Camera:ScreenPointToRay(mousePos.X, mousePos.Y)
-                local ray = Ray.new(unitRay.Origin, unitRay.Direction * 500)
-                local hit = workspace:FindPartOnRay(ray, LocalPlayer.Character)
-                if hit then
-                    LocalPlayer.Character:MoveTo(hit.Position + Vector3.new(0, 5, 0))
-                end
-                conn:Disconnect()
-            end
-        end)
+-- // Utility Tab — Teleport Dropdown + Quit
+local playerNames = {}
+for _, p in ipairs(Players:GetPlayers()) do
+    if p.Name ~= LocalPlayer.Name then
+        table.insert(playerNames, p.Name)
     end
-})
+end
 
-UtilityTab:AddDropdown({
+local tpDropdown = UtilityTab:AddDropdown({
     Name = "Teleport to Player",
     Default = "",
-    Options = {},
+    Options = playerNames,
     Callback = function(name)
         local target = Players:FindFirstChild(name)
         if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-            LocalPlayer.Character:MoveTo(target.Character.HumanoidRootPart.Position)
+            LocalPlayer.Character:MoveTo(target.Character.HumanoidRootPart.Position + Vector3.new(0, 5, 0))
         end
     end
 })
 
-for _, p in ipairs(Players:GetPlayers()) do
-    UtilityTab.Flags["Teleport to Player"]:Add(p.Name)
-end
+Players.PlayerAdded:Connect(function(plr)
+    table.insert(playerNames, plr.Name)
+    tpDropdown:Refresh(playerNames, true)
+end)
+
+Players.PlayerRemoving:Connect(function(plr)
+    for i, name in ipairs(playerNames) do
+        if name == plr.Name then
+            table.remove(playerNames, i)
+            break
+        end
+    end
+    tpDropdown:Refresh(playerNames, true)
+end)
 
 UtilityTab:AddButton({
     Name = "Quit",
