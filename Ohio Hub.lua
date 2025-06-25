@@ -1,13 +1,14 @@
 -- Load Orion Library
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/jensonhirst/Orion/main/source"))()
 
+-- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- Create Window
+-- WINDOW
 local Window = OrionLib:MakeWindow({
     Name = "Ohio Hub",
     HidePremium = false,
@@ -18,93 +19,85 @@ local Window = OrionLib:MakeWindow({
     IntroIcon = "rbxassetid://4483345998",
     Icon = "rbxassetid://4483345998",
     CloseCallback = function()
-        -- Reset player on close
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
             LocalPlayer.Character.Humanoid.WalkSpeed = 16
             LocalPlayer.Character.Humanoid.JumpPower = 50
-            -- Turn off noclip
-            _G.NoclipEnabled = false
-            -- Remove ESP highlights
-            removeESP()
-            -- Stop speed bypass
-            if SpeedBypassConnection then SpeedBypassConnection:Disconnect() SpeedBypassConnection = nil end
         end
-        print("Ohio Hub closed, cleaned up.")
+        _G.JumpBoostEnabled = false
+        _G.SpeedBypassEnabled = false
+        SpeedLoop:Disconnect()
+        JumpLoop:Disconnect()
+        removeESP()
+        print("Ohio Hub closed, reset")
     end
 })
 
--- ==== MAIN TAB ====
-local MainTab = Window:MakeTab({
-    Name = "Main",
-    Icon = "rbxassetid://4483345998",
-    PremiumOnly = false
-})
+-- MAIN TAB
+local mainTab = Window:MakeTab({ Name = "Main", Icon = "rbxassetid://4483345998" })
+mainTab:AddSection{ Name = "Info" }
+mainTab:AddLabel("Ohio Hub • Version v1.1.0")
+mainTab:AddParagraph("Credits", "Created by Dustin using Orion Library")
 
-MainTab:AddSection({Name = "Info"})
-MainTab:AddLabel("Ohio Hub Version: v1.0.0")
-MainTab:AddParagraph("Credits", "Made by Dustin | Powered by Orion Library")
+-- PLAYERS TAB
+local playerTab = Window:MakeTab({ Name = "Players", Icon = "rbxassetid://4483345998" })
+playerTab:AddSection{ Name = "Player Mods" }
 
--- ==== PLAYER TAB ====
-local PlayerTab = Window:MakeTab({
-    Name = "Players",
-    Icon = "rbxassetid://4483345998",
-    PremiumOnly = false
-})
-
-PlayerTab:AddSection({Name = "Player Mods"})
-
--- Speed Bypass
+-- Speed bypass setup
+_G.SpeedBypassEnabled = false
 local DesiredSpeed = 16
-local SpeedBypassConnection
+local SpeedLoop = RunService.Heartbeat:Connect(function()
+    if _G.SpeedBypassEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.WalkSpeed = DesiredSpeed
+    end
+end)
 
-PlayerTab:AddSlider({
+playerTab:AddSlider({
     Name = "Speed",
     Min = 16,
-    Max = 250,
+    Max = 100,
     Default = 16,
     Increment = 1,
-    Color = Color3.fromRGB(0, 255, 0),
-    ValueName = "WalkSpeed",
-    Callback = function(value)
-        DesiredSpeed = value
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid.WalkSpeed = value
-        end
-        if not SpeedBypassConnection then
-            SpeedBypassConnection = RunService.Heartbeat:Connect(function()
-                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-                    LocalPlayer.Character.Humanoid.WalkSpeed = DesiredSpeed
-                end
-            end)
-        end
+    Color = Color3.fromRGB(0,255,0),
+    ValueName = "WS",
+    Callback = function(v)
+        DesiredSpeed = v
+        _G.SpeedBypassEnabled = v > 16
     end
 })
 
--- Jump Boost
-PlayerTab:AddSlider({
+-- Jump Boost setup
+_G.JumpBoostEnabled = false
+local DesiredJump = 50
+local JumpLoop = RunService.Heartbeat:Connect(function()
+    if _G.JumpBoostEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.JumpPower = DesiredJump
+    end
+end)
+
+playerTab:AddSlider({
     Name = "Jump Boost",
     Min = 50,
-    Max = 200,
+    Max = 100,
     Default = 50,
-    Increment = 5,
-    Color = Color3.fromRGB(255, 255, 0),
-    ValueName = "JumpPower",
-    Callback = function(value)
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid.JumpPower = value
-        end
+    Increment = 1,
+    Color = Color3.fromRGB(255,255,0),
+    ValueName = "JP",
+    Callback = function(v)
+        DesiredJump = v
+        _G.JumpBoostEnabled = v > 50
     end
 })
 
--- Heal Button
-PlayerTab:AddButton({
-    Name = "Heal",
+-- Heal function
+playerTab:AddButton({
+    Name = "Heal 🔧",
     Callback = function()
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid.Health = LocalPlayer.Character.Humanoid.MaxHealth
+        local hm = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+        if hm then
+            hm.Health = hm.MaxHealth
             OrionLib:MakeNotification({
-                Name = "Heal",
-                Content = "You have been healed!",
+                Name = "Healed",
+                Content = "You got full health!",
                 Image = "rbxassetid://4483345998",
                 Time = 3
             })
@@ -112,215 +105,121 @@ PlayerTab:AddButton({
     end
 })
 
--- Noclip Toggle
+-- Noclip
 _G.NoclipEnabled = false
-
-local function noclipLoop()
-    RunService.Stepped:Connect(function()
-        if _G.NoclipEnabled and LocalPlayer.Character then
-            for _, part in pairs(LocalPlayer.Character:GetChildren()) do
-                if part:IsA("BasePart") and part.CanCollide then
-                    part.CanCollide = false
-                end
+RunService.Stepped:Connect(function()
+    if _G.NoclipEnabled and LocalPlayer.Character then
+        for _, part in ipairs(LocalPlayer.Character:GetChildren()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
             end
         end
-    end)
-end
-
-noclipLoop()
-
-PlayerTab:AddToggle({
+    end
+end)
+playerTab:AddToggle({
     Name = "Noclip",
     Default = false,
-    Callback = function(state)
-        _G.NoclipEnabled = state
-        if not state and LocalPlayer.Character then
-            for _, part in pairs(LocalPlayer.Character:GetChildren()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = true
-                end
-            end
-        end
-    end
+    Callback = function(s) _G.NoclipEnabled = s end
 })
 
--- ==== COMBAT TAB ====
-local CombatTab = Window:MakeTab({
-    Name = "Combat",
-    Icon = "rbxassetid://4483345998",
-    PremiumOnly = false
-})
+-- COMBAT TAB
+local combatTab = Window:MakeTab({ Name = "Combat", Icon = "rbxassetid://4483345998" })
+combatTab:AddSection{ Name = "Combat Mods" }
 
-CombatTab:AddSection({Name = "Combat Mods"})
-
--- Wallbang toggle (basic simulation)
--- Note: Actual wallbang usually requires exploiting gun scripts or raycasts, so here's a placeholder flag.
+-- Wallbang helper: ignore raycast walls
 _G.WallbangEnabled = false
-
-CombatTab:AddToggle({
-    Name = "Wallbang (Simulated)",
+-- Note: Actual effect depends on game gun mechanics
+combatTab:AddToggle({
+    Name = "Wallbang",
     Default = false,
-    Callback = function(state)
-        _G.WallbangEnabled = state
+    Callback = function(s)
+        _G.WallbangEnabled = s
         OrionLib:MakeNotification({
             Name = "Wallbang",
-            Content = state and "Wallbang Enabled (Simulated)" or "Wallbang Disabled",
+            Content = "Wallbang " .. (s and "Enabled" or "Disabled"),
             Image = "rbxassetid://4483345998",
-            Time = 3
+            Time = 2
         })
-        -- Add your game's specific wallbang exploit code here
     end
 })
 
--- ESP toggle
-local ESPFolder = Instance.new("Folder", game.CoreGui)
-ESPFolder.Name = "OhioHubESP"
+-- ESP
+local ESPData = { Boxes = {}, Texts = {} }
+local ESPConn
 
-local ESPBoxes = {}
-local ESPTexts = {}
-
-local function createESPForPlayer(player)
-    if ESPBoxes[player] or player == LocalPlayer then return end
-    local box = Drawing and Drawing.new and Drawing.new("Square") or nil
-    local nameText = Drawing and Drawing.new and Drawing.new("Text") or nil
-    local healthText = Drawing and Drawing.new and Drawing.new("Text") or nil
-    if not (box and nameText and healthText) then return end
-    
-    box.Visible = false
-    box.Color = Color3.new(1, 0, 0)
+local function createESP(player)
+    if player == LocalPlayer or ESPData.Boxes[player] then return end
+    local box = Drawing.new("Square")
+    box.Color = Color3.new(1,0,0)
     box.Thickness = 2
     box.Filled = false
+    local nameT = Drawing.new("Text")
+    nameT.Color = Color3.new(1,1,1)
+    nameT.Size = 14
+    nameT.Center = true
+    nameT.Outline = true
 
-    nameText.Visible = false
-    nameText.Color = Color3.new(1, 1, 1)
-    nameText.Size = 14
-    nameText.Center = true
-    nameText.Outline = true
-
-    healthText.Visible = false
-    healthText.Color = Color3.new(0, 1, 0)
-    healthText.Size = 14
-    healthText.Center = true
-    healthText.Outline = true
-
-    ESPBoxes[player] = box
-    ESPTexts[player] = {nameText, healthText}
+    ESPData.Boxes[player] = box
+    ESPData.Texts[player] = nameT
 end
 
 local function removeESP()
-    for player, box in pairs(ESPBoxes) do
-        box:Remove()
-    end
-    for player, texts in pairs(ESPTexts) do
-        for _, text in pairs(texts) do
-            text:Remove()
-        end
-    end
-    ESPBoxes = {}
-    ESPTexts = {}
+    for p,box in pairs(ESPData.Boxes) do box:Remove() end
+    for p,txt in pairs(ESPData.Texts) do txt:Remove() end
+    ESPData.Boxes, ESPData.Texts = {}, {}
+    if ESPConn then ESPConn:Disconnect() ESPConn = nil end
 end
 
-local function updateESP()
-    for player, box in pairs(ESPBoxes) do
-        local char = player.Character
-        local head = char and char:FindFirstChild("Head")
-        local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-        if head and humanoid and humanoid.Health > 0 then
-            local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
-            if onScreen then
-                local size = Vector3.new(4, 6, 1) -- box size approx
-
-                local screenPos = Vector2.new(pos.X, pos.Y)
-
-                box.Visible = true
-                box.Position = Vector2.new(screenPos.X - 20, screenPos.Y - 40)
-                box.Size = Vector2.new(40, 80)
-
-                local nameText, healthText = unpack(ESPTexts[player])
-                nameText.Visible = true
-                nameText.Text = player.Name
-                nameText.Position = Vector2.new(screenPos.X, screenPos.Y - 50)
-
-                healthText.Visible = true
-                healthText.Text = "HP: " .. math.floor(humanoid.Health)
-                healthText.Position = Vector2.new(screenPos.X, screenPos.Y - 35)
-            else
-                box.Visible = false
-                for _, txt in pairs(ESPTexts[player]) do
-                    txt.Visible = false
-                end
-            end
-        else
-            box.Visible = false
-            for _, txt in pairs(ESPTexts[player]) do
-                txt.Visible = false
-            end
-        end
-    end
-end
-
-local ESPEnabled = false
-local ESPConnection
-
-CombatTab:AddToggle({
+combatTab:AddToggle({
     Name = "ESP",
     Default = false,
-    Callback = function(state)
-        ESPEnabled = state
-        if state then
-            for _, player in pairs(Players:GetPlayers()) do
-                if player ~= LocalPlayer then
-                    createESPForPlayer(player)
+    Callback = function(s)
+        removeESP()
+        if s then
+            for _,p in ipairs(Players:GetPlayers()) do createESP(p) end
+            ESPConn = RunService.RenderStepped:Connect(function()
+                for p,box in pairs(ESPData.Boxes) do
+                    local c = p.Character; local h=c and c:FindFirstChild("Head"); local hm=c and c:FindFirstChild("Humanoid")
+                    if h and hm and hm.Health > 0 then
+                        local sp, ons = Camera:WorldToViewportPoint(h.Position)
+                        if ons then
+                            box.Visible = true
+                            box.Position = Vector2.new(sp.X-20, sp.Y-40)
+                            box.Size = Vector2.new(40,80)
+                            local t = ESPData.Texts[p]
+                            t.Visible = true
+                            t.Text = p.Name .. " | " .. math.floor(hm.Health)
+                            t.Position = Vector2.new(sp.X, sp.Y - 50)
+                        else
+                            box.Visible = false
+                            ESPData.Texts[p].Visible = false
+                        end
+                    else
+                        box.Visible = false
+                        ESPData.Texts[p].Visible = false
+                    end
                 end
-            end
-            ESPConnection = RunService.RenderStepped:Connect(updateESP)
-        else
-            if ESPConnection then
-                ESPConnection:Disconnect()
-                ESPConnection = nil
-            end
-            removeESP()
+            end)
         end
     end
 })
 
--- Update ESP when players join or leave
-Players.PlayerAdded:Connect(function(player)
-    if ESPEnabled and player ~= LocalPlayer then
-        createESPForPlayer(player)
+Players.PlayerAdded:Connect(function(p) if ESPData.Boxes then createESP(p) end end)
+Players.PlayerRemoving:Connect(function(p)
+    if ESPData.Boxes[p] then
+        ESPData.Boxes[p]:Remove()
+        ESPData.Texts[p]:Remove()
+        ESPData.Boxes[p], ESPData.Texts[p] = nil, nil
     end
 end)
 
-Players.PlayerRemoving:Connect(function(player)
-    if ESPBoxes[player] then
-        if ESPBoxes[player] then
-            ESPBoxes[player]:Remove()
-            ESPBoxes[player] = nil
-        end
-        if ESPTexts[player] then
-            for _, txt in pairs(ESPTexts[player]) do
-                txt:Remove()
-            end
-            ESPTexts[player] = nil
-        end
-    end
-end)
-
--- ==== UTILITY TAB ====
-local UtilityTab = Window:MakeTab({
-    Name = "Utility",
-    Icon = "rbxassetid://4483345998",
-    PremiumOnly = false
-})
-
-UtilityTab:AddSection({Name = "Game Controls"})
-
-UtilityTab:AddButton({
+-- UTILITY TAB
+local utilTab = Window:MakeTab({ Name = "Utility", Icon = "rbxassetid://4483345998" })
+utilTab:AddSection{ Name = "Game" }
+utilTab:AddButton({
     Name = "Quit Game",
-    Callback = function()
-        LocalPlayer:Kick("Quit button pressed. Goodbye!")
-    end
+    Callback = function() LocalPlayer:Kick("Quit pressed.") end
 })
 
--- Initialize UI
+-- 🌟 Initialize
 OrionLib:Init()
