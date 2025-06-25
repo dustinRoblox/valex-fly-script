@@ -1,4 +1,4 @@
--- Ohio Hub | Stable Version
+-- Ohio Hub | Stable Version w/ Heal Fix & Infinite Money
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/jensonhirst/Orion/main/source"))()
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -15,23 +15,20 @@ local Window = OrionLib:MakeWindow({
     IntroIcon = "rbxassetid://4483345998",
     Icon = "rbxassetid://4483345998",
     CloseCallback = function()
-        -- Disconnect all active connections on close
         if speedConn then speedConn:Disconnect() speedConn = nil end
         if jumpConn then jumpConn:Disconnect() jumpConn = nil end
         if noclipConn then noclipConn:Disconnect() noclipConn = nil end
         if espConn then espConn:Disconnect() espConn = nil end
+        if infMoneyConn then infMoneyConn:Disconnect() infMoneyConn = nil end
 
-        -- Remove all ESP drawings
         for _, drawing in pairs(ESPDrawings) do
             drawing:Remove()
         end
         ESPDrawings = {}
 
-        -- Reset walk/jump speed
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
             LocalPlayer.Character.Humanoid.WalkSpeed = 16
             LocalPlayer.Character.Humanoid.JumpPower = 50
-            -- Reset CanCollide for noclip parts
             for _, part in pairs(LocalPlayer.Character:GetChildren()) do
                 if part:IsA("BasePart") then
                     part.CanCollide = true
@@ -41,23 +38,20 @@ local Window = OrionLib:MakeWindow({
     end
 })
 
--- Tabs
 local mainTab = Window:MakeTab({Name = "Main", Icon = "rbxassetid://4483345998"})
 local playerTab = Window:MakeTab({Name = "Players", Icon = "rbxassetid://4483345998"})
 local combatTab = Window:MakeTab({Name = "Combat", Icon = "rbxassetid://4483345998"})
 local utilityTab = Window:MakeTab({Name = "Utility", Icon = "rbxassetid://4483345998"})
 
--- Main Tab
 mainTab:AddLabel("Ohio Hub • Version v1.1.0")
 mainTab:AddParagraph("Credits", "Created by Dustin using Orion Library")
 
--- PLAYER TAB VARIABLES
-local speedConn, jumpConn, noclipConn
+local speedConn, jumpConn, noclipConn, infMoneyConn
 local DesiredSpeed = 16
 local DesiredJump = 50
 local noclipEnabled = false
+local ESPDrawings = {}
 
--- SPEED SLIDER
 playerTab:AddSlider({
     Name = "Speed",
     Min = 16,
@@ -77,7 +71,6 @@ playerTab:AddSlider({
                 end
             end)
         else
-            -- Reset speed to 16
             if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
                 LocalPlayer.Character.Humanoid.WalkSpeed = 16
             end
@@ -85,7 +78,6 @@ playerTab:AddSlider({
     end
 })
 
--- JUMP BOOST SLIDER
 playerTab:AddSlider({
     Name = "Jump Boost",
     Min = 50,
@@ -105,7 +97,6 @@ playerTab:AddSlider({
                 end
             end)
         else
-            -- Reset jump to 50
             if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
                 LocalPlayer.Character.Humanoid.JumpPower = 50
             end
@@ -113,7 +104,6 @@ playerTab:AddSlider({
     end
 })
 
--- HEAL BUTTON
 playerTab:AddButton({
     Name = "Heal",
     Callback = function()
@@ -121,11 +111,19 @@ playerTab:AddButton({
         if char and char:FindFirstChild("Humanoid") then
             local hm = char.Humanoid
             hm.Health = hm.MaxHealth
+            spawn(function()
+                local endTime = tick() + 5
+                while tick() < endTime do
+                    if hm.Health < hm.MaxHealth then
+                        hm.Health = hm.MaxHealth
+                    end
+                    wait(0.5)
+                end
+            end)
         end
     end
 })
 
--- NOCLIP TOGGLE
 playerTab:AddToggle({
     Name = "Noclip",
     Default = false,
@@ -149,7 +147,6 @@ playerTab:AddToggle({
                 end
             end)
         else
-            -- Reset CanCollide to true when noclip off
             local char = LocalPlayer.Character
             if char then
                 for _, part in pairs(char:GetChildren()) do
@@ -162,11 +159,32 @@ playerTab:AddToggle({
     end
 })
 
--- COMBAT TAB VARIABLES
-local espConn
-local ESPDrawings = {}
+local infMoneyEnabled = false
+playerTab:AddToggle({
+    Name = "Infinite Money",
+    Default = false,
+    Save = true,
+    Flag = "infmoney",
+    Callback = function(state)
+        infMoneyEnabled = state
+        if infMoneyConn then
+            infMoneyConn:Disconnect()
+            infMoneyConn = nil
+        end
+        if state then
+            infMoneyConn = RunService.Heartbeat:Connect(function()
+                local stats = LocalPlayer:FindFirstChild("leaderstats")
+                if stats then
+                    local cash = stats:FindFirstChild("Cash")
+                    if cash and cash.Value < 1e9 then
+                        cash.Value = 1e9
+                    end
+                end
+            end)
+        end
+    end
+})
 
--- ESP TOGGLE
 combatTab:AddToggle({
     Name = "ESP",
     Default = false,
@@ -176,7 +194,6 @@ combatTab:AddToggle({
         if espConn then
             espConn:Disconnect()
             espConn = nil
-            -- Remove all drawings
             for _, drawing in pairs(ESPDrawings) do
                 drawing:Remove()
             end
@@ -185,16 +202,13 @@ combatTab:AddToggle({
 
         if enabled then
             espConn = RunService.RenderStepped:Connect(function()
-                -- debounce to reduce FPS load
                 task.wait(0.05)
-
                 for _, player in pairs(Players:GetPlayers()) do
                     if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") and player.Character:FindFirstChild("Head") then
                         local head = player.Character.Head
                         local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
                         if onScreen then
                             if not ESPDrawings[player] then
-                                -- Create new Drawing objects
                                 local box = Drawing.new("Square")
                                 box.Visible = true
                                 box.Color = Color3.new(1, 0, 0)
@@ -204,45 +218,3 @@ combatTab:AddToggle({
                             end
                             local box = ESPDrawings[player]
                             local size = 50
-                            box.Size = Vector2.new(size, size)
-                            box.Position = Vector2.new(pos.X - size / 2, pos.Y - size / 2)
-                            box.Visible = true
-                        else
-                            if ESPDrawings[player] then
-                                ESPDrawings[player].Visible = false
-                            end
-                        end
-                    else
-                        if ESPDrawings[player] then
-                            ESPDrawings[player]:Remove()
-                            ESPDrawings[player] = nil
-                        end
-                    end
-                end
-            end)
-        end
-    end
-})
-
--- WALLBANG TOGGLE (Placeholder, no real bypass)
-combatTab:AddToggle({
-    Name = "Wallbang",
-    Default = false,
-    Save = true,
-    Flag = "wallbang",
-    Callback = function(enabled)
-        -- No functional code because actual wallbang bypass needs exploit specifics
-        print("Wallbang toggled:", enabled)
-    end
-})
-
--- UTILITY TAB QUIT BUTTON
-utilityTab:AddButton({
-    Name = "Quit",
-    Callback = function()
-        LocalPlayer:Kick("You quit Ohio Hub.")
-    end
-})
-
--- Init UI
-OrionLib:Init()
