@@ -149,9 +149,23 @@ utilityTab:AddTextbox({
     Name = "Teleport to Player",
     Default = "",
     Callback = function(playerName)
-        local target = Players:FindFirstChild(playerName)
+        playerName = playerName:lower()
+        local target
+        for _, player in pairs(Players:GetPlayers()) do
+            if player.Name:lower():find(playerName) then
+                target = player
+                break
+            end
+        end
         if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
             LocalPlayer.Character:MoveTo(target.Character.HumanoidRootPart.Position)
+        else
+            OrionLib:MakeNotification({
+                Name = "Teleport Failed",
+                Content = "Player not found or not in game.",
+                Time = 3,
+                Image = "rbxassetid://4483345998"
+            })
         end
     end
 })
