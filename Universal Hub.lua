@@ -1,162 +1,142 @@
--- Universal Hub | OrionLib UI with Game Auto-Detection for All Games
+--// Universal Hub Menu using OrionLib //--
+
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/jensonhirst/Orion/main/source"))()
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
-local TeleportService = game:GetService("TeleportService")
-local MarketplaceService = game:GetService("MarketplaceService")
-local UserInputService = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
 
--- Game Detection Setup
-local placeId = game.PlaceId
-local gameName = "Unknown Game"
-pcall(function()
-    gameName = MarketplaceService:GetProductInfo(placeId).Name
-end)
+-- Disconnects
+local speedConn, jumpConn, noclipConn, espConn = nil, nil, nil, nil
+local flyConn = nil
+local flySpeed = 50
+local ESPDrawings = {}
 
+-- UI Setup
 local Window = OrionLib:MakeWindow({
-    Name = "Universal Hub - " .. gameName,
+    Name = "Universal Hub",
+    HidePremium = false,
     SaveConfig = true,
-    ConfigFolder = "UniversalHub"
+    ConfigFolder = "UniversalHubConfig",
+    IntroEnabled = true,
+    IntroText = "Universal Hub Loaded!",
+    IntroIcon = "rbxassetid://4483345998",
+    Icon = "rbxassetid://4483345998",
+    CloseCallback = function()
+        for _, v in pairs({speedConn, jumpConn, noclipConn, espConn, flyConn}) do if v then v:Disconnect() end end
+        for _, box in pairs(ESPDrawings) do box:Remove() end
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("Humanoid") then
+            char.Humanoid.WalkSpeed = 16
+            char.Humanoid.JumpPower = 50
+            for _, p in pairs(char:GetChildren()) do
+                if p:IsA("BasePart") then p.CanCollide = true end
+            end
+        end
+    end
 })
 
--- Main Tab
+-- Tabs
 local mainTab = Window:MakeTab({Name = "Main", Icon = "rbxassetid://4483345998"})
-mainTab:AddLabel("Game Detected: " .. gameName)
-mainTab:AddParagraph("Credits", "Made with OrionLib • Hub auto-adapts to all games")
+local playerTab = Window:MakeTab({Name = "Players", Icon = "rbxassetid://4483345998"})
+local combatTab = Window:MakeTab({Name = "Combat", Icon = "rbxassetid://4483345998"})
+local utilityTab = Window:MakeTab({Name = "Utility", Icon = "rbxassetid://4483345998"})
+
+-- Main Tab
+mainTab:AddLabel("Universal Hub v1.0")
+mainTab:AddParagraph("Credits", "Made by Dustin with OrionLib")
 
 -- Players Tab
-local playerTab = Window:MakeTab({Name = "Players", Icon = "rbxassetid://4483345998"})
-local speedConn, jumpConn, noclipConn, infJumpConn
-
 playerTab:AddSlider({
     Name = "Speed",
     Min = 16,
     Max = 100,
     Default = 16,
+    Increment = 1,
     Callback = function(v)
         if speedConn then speedConn:Disconnect() end
         speedConn = RunService.Heartbeat:Connect(function()
             local char = LocalPlayer.Character
-            if char and char:FindFirstChildOfClass("Humanoid") then
-                char:FindFirstChildOfClass("Humanoid").WalkSpeed = v
+            if char and char:FindFirstChild("Humanoid") then
+                char.Humanoid.WalkSpeed = v
             end
         end)
     end
 })
 
 playerTab:AddSlider({
-    Name = "Jump Boost",
+    Name = "Jump Power",
     Min = 50,
     Max = 100,
     Default = 50,
+    Increment = 1,
     Callback = function(v)
         if jumpConn then jumpConn:Disconnect() end
         jumpConn = RunService.Heartbeat:Connect(function()
             local char = LocalPlayer.Character
-            if char and char:FindFirstChildOfClass("Humanoid") then
-                char:FindFirstChildOfClass("Humanoid").JumpPower = v
+            if char and char:FindFirstChild("Humanoid") then
+                char.Humanoid.JumpPower = v
             end
         end)
     end
 })
 
-local noclipEnabled = false
 playerTab:AddToggle({
     Name = "Noclip",
     Default = false,
     Callback = function(state)
-        noclipEnabled = state
         if noclipConn then noclipConn:Disconnect() end
         if state then
             noclipConn = RunService.Stepped:Connect(function()
                 local char = LocalPlayer.Character
                 if char then
-                    for _, part in pairs(char:GetDescendants()) do
-                        if part:IsA("BasePart") then
-                            part.CanCollide = false
-                        end
+                    for _, p in pairs(char:GetChildren()) do
+                        if p:IsA("BasePart") then p.CanCollide = false end
                     end
                 end
             end)
         else
             local char = LocalPlayer.Character
             if char then
-                for _, part in pairs(char:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.CanCollide = true
-                    end
+                for _, p in pairs(char:GetChildren()) do
+                    if p:IsA("BasePart") then p.CanCollide = true end
                 end
             end
         end
     end
 })
 
-playerTab:AddToggle({
-    Name = "Infinite Jump",
-    Default = false,
-    Callback = function(state)
-        if infJumpConn then infJumpConn:Disconnect() end
-        if state then
-            infJumpConn = UserInputService.JumpRequest:Connect(function()
-                local char = LocalPlayer.Character
-                if char and char:FindFirstChildOfClass("Humanoid") then
-                    char:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
-                end
-            end)
-        end
-    end
-})
-
-playerTab:AddTextbox({
-    Name = "Teleport to Player",
-    Default = "",
-    TextDisappear = true,
-    Callback = function(name)
-        local plr = Players:FindFirstChild(name)
-        if plr and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-            LocalPlayer.Character:MoveTo(plr.Character.HumanoidRootPart.Position + Vector3.new(0,5,0))
-        end
-    end
-})
-
 -- Combat Tab
-local combatTab = Window:MakeTab({Name = "Combat", Icon = "rbxassetid://4483345998"})
-local espConn
-local espBoxes = {}
-
 combatTab:AddToggle({
-    Name = "ESP Boxes",
+    Name = "ESP",
     Default = false,
-    Callback = function(state)
+    Callback = function(enabled)
         if espConn then espConn:Disconnect() end
-        for _, box in pairs(espBoxes) do box:Remove() end
-        espBoxes = {}
-        if state then
+        for _, box in pairs(ESPDrawings) do box:Remove() end
+        ESPDrawings = {}
+        if enabled then
             espConn = RunService.RenderStepped:Connect(function()
-                for _, plr in pairs(Players:GetPlayers()) do
-                    if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("Head") then
-                        local head = plr.Character.Head
+                for _, player in pairs(Players:GetPlayers()) do
+                    if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+                        local head = player.Character.Head
                         local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
                         if onScreen then
-                            if not espBoxes[plr] then
+                            if not ESPDrawings[player] then
                                 local box = Drawing.new("Square")
                                 box.Color = Color3.fromRGB(0, 255, 0)
-                                box.Thickness = 2
+                                box.Thickness = 1
                                 box.Filled = false
-                                espBoxes[plr] = box
+                                ESPDrawings[player] = box
                             end
-                            local box = espBoxes[plr]
-                            box.Size = Vector2.new(50, 50)
-                            box.Position = Vector2.new(pos.X - 25, pos.Y - 25)
-                            box.Visible = true
-                        elseif espBoxes[plr] then
-                            espBoxes[plr].Visible = false
+                            local size = 50
+                            ESPDrawings[player].Size = Vector2.new(size, size)
+                            ESPDrawings[player].Position = Vector2.new(pos.X - size / 2, pos.Y - size / 2)
+                            ESPDrawings[player].Visible = true
+                        else
+                            if ESPDrawings[player] then
+                                ESPDrawings[player].Visible = false
+                            end
                         end
-                    elseif espBoxes[plr] then
-                        espBoxes[plr]:Remove()
-                        espBoxes[plr] = nil
                     end
                 end
             end)
@@ -164,40 +144,38 @@ combatTab:AddToggle({
     end
 })
 
-combatTab:AddParagraph("Future Features", "More combat features coming soon!")
-
 -- Utility Tab
-local utilityTab = Window:MakeTab({Name = "Utility", Icon = "rbxassetid://4483345998"})
+utilityTab:AddTextbox({
+    Name = "Teleport to Player",
+    Default = "",
+    Callback = function(playerName)
+        local target = Players:FindFirstChild(playerName)
+        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character:MoveTo(target.Character.HumanoidRootPart.Position)
+        end
+    end
+})
+
 utilityTab:AddButton({
     Name = "Rejoin Server",
     Callback = function()
-        TeleportService:Teleport(placeId, LocalPlayer)
+        game:GetService("TeleportService"):Teleport(game.PlaceId)
     end
 })
 
 utilityTab:AddButton({
     Name = "Reset Character",
     Callback = function()
-        LocalPlayer:LoadCharacter()
+        LocalPlayer.Character:BreakJoints()
     end
 })
 
 utilityTab:AddButton({
-    Name = "Quit",
+    Name = "Quit Hub",
     Callback = function()
-        LocalPlayer:Kick("You quit Universal Hub.")
+        LocalPlayer:Kick("You have exited the Universal Hub.")
     end
 })
 
--- Settings Tab
-local settingsTab = Window:MakeTab({Name = "Settings", Icon = "rbxassetid://4483345998"})
-settingsTab:AddButton({
-    Name = "Reset Config",
-    Callback = function()
-        OrionLib:Destroy()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/jensonhirst/Orion/main/source"))():Init()
-    end
-})
-
-mainTab:AddParagraph("Note", "Universal Hub loaded. Adapted for: " .. gameName)
+-- Init UI
 OrionLib:Init()
