@@ -1,6 +1,7 @@
--- Universal Hub with Troll Tab
+-- Universal Hub with Enhanced Teleport Dropdown
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/jensonhirst/Orion/main/source"))()
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
 -- Create Window
@@ -8,118 +9,115 @@ local Window = OrionLib:MakeWindow({
     Name = "Universal Hub",
     HidePremium = false,
     SaveConfig = true,
-    ConfigFolder = "UniversalHubConfig",
+    ConfigFolder = "UniversalHub",
     IntroEnabled = true,
-    IntroText = "Welcome to Universal Hub!",
+    IntroText = "Universal Hub • v1.0",
     IntroIcon = "rbxassetid://4483345998",
     Icon = "rbxassetid://4483345998"
 })
 
--- Troll Tab
-local trollTab = Window:MakeTab({
-    Name = "Troll",
-    Icon = "rbxassetid://4483345998",
-    PremiumOnly = false
+-- Tabs
+local mainTab    = Window:MakeTab({Name = "Main",    Icon = "rbxassetid://4483345998"})
+local playersTab = Window:MakeTab({Name = "Players", Icon = "rbxassetid://4483345998"})
+local combatTab  = Window:MakeTab({Name = "Combat",  Icon = "rbxassetid://4483345998"})
+local utilityTab = Window:MakeTab({Name = "Utility", Icon = "rbxassetid://4483345998"})
+local trollTab   = Window:MakeTab({Name = "Troll",   Icon = "rbxassetid://4483345998"})
+
+-- Main
+mainTab:AddLabel("Universal Hub • Version 1.0")
+mainTab:AddParagraph("Credits", "Made by Dustin | Powered by OrionLib")
+
+-- Players
+playersTab:AddSlider({Name="Speed Boost", Min=16, Max=100, Default=16, Callback=function(v)
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.WalkSpeed = v
+    end
+end})
+playersTab:AddSlider({Name="Jump Boost", Min=50, Max=100, Default=50, Callback=function(v)
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.JumpPower = v
+    end
+end})
+playersTab:AddToggle({Name="Noclip", Default=false, Callback=function(state)
+    RunService.Stepped:Connect(function()
+        if LocalPlayer.Character then
+            for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = not state
+                end
+            end
+        end
+    end)
+end})
+
+-- Combat
+combatTab:AddToggle({Name="ESP (Player Box)", Default=false, Callback=function(state)
+    OrionLib:MakeNotification({Name="ESP",
+        Content = state and "ESP Enabled" or "ESP Disabled",
+        Image   = "rbxassetid://4483345998",
+        Time    = 2
+    })
+end})
+
+-- Utility with Enhanced Teleport Dropdown
+local playerList = {}
+-- Populate initial list
+table.foreach(Players:GetPlayers(), function(_, p) table.insert(playerList, p.Name) end)
+
+local tpDropdown = utilityTab:AddDropdown({
+    Name    = "Teleport to Player",
+    Default = playerList[1] or "",
+    Options = playerList,
+    Callback = function(selected)
+        local target = Players:FindFirstChild(selected)
+        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character:PivotTo(target.Character.HumanoidRootPart.CFrame * CFrame.new(0,5,0))
+        else
+            OrionLib:MakeNotification({
+                Name    = "Teleport Failed",
+                Content = "Could not find or access player.",
+                Image   = "rbxassetid://4483345998",
+                Time    = 3
+            })
+        end
+    end
 })
 
--- Fake Admin Tag
+-- Update list on join/leave
+table.insert = table.insert; table.remove = table.remove
+Players.PlayerAdded:Connect(function(plr)
+    table.insert(playerList, plr.Name)
+    tpDropdown:Refresh(playerList, true)
+end)
+Players.PlayerRemoving:Connect(function(plr)
+    for i, name in ipairs(playerList) do
+        if name == plr.Name then
+            table.remove(playerList, i)
+            break
+        end
+    end
+    tpDropdown:Refresh(playerList, true)
+end)
+
+utilityTab:AddButton({Name="Quit Hub", Callback=function()
+    LocalPlayer:Kick("Exited Universal Hub.")
+end})
+
+-- Troll Tab
 local function createFakeAdminTag()
     local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     if not char:FindFirstChild("Head") then return end
-
-    if char.Head:FindFirstChild("FakeAdminTag") then
-        char.Head.FakeAdminTag:Destroy()
-    end
-
-    local tag = Instance.new("BillboardGui", char.Head)
-    tag.Name = "FakeAdminTag"
-    tag.Size = UDim2.new(0, 100, 0, 40)
-    tag.StudsOffset = Vector3.new(0, 2.5, 0)
-    tag.AlwaysOnTop = true
-
-    local label = Instance.new("TextLabel", tag)
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.Text = "[ADMIN]"
-    label.TextColor3 = Color3.fromRGB(255, 0, 0)
-    label.TextStrokeTransparency = 0
-    label.TextScaled = true
-    label.Font = Enum.Font.GothamBold
-
-    OrionLib:MakeNotification({
-        Name = "Troll Activated",
-        Content = "You now have a fake [ADMIN] tag.",
-        Image = "rbxassetid://4483345998",
-        Time = 4
-    })
+    if char.Head:FindFirstChild("AdminTag") then char.Head.AdminTag:Destroy() end
+    local gui = Instance.new("BillboardGui", char.Head)
+    gui.Name = "AdminTag" gui.Size = UDim2.new(0,100,0,40)
+    gui.StudsOffset = Vector3.new(0,2.5,0) gui.AlwaysOnTop = true
+    local label = Instance.new("TextLabel", gui)
+    label.Size = UDim2.new(1,0,1,0) label.BackgroundTransparency = 1
+    label.Font = Enum.Font.GothamBold label.TextScaled = true
+    label.Text = "[ADMIN]" label.TextColor3 = Color3.fromRGB(255,0,0)
 end
 
--- Add Admin Tag Button
-trollTab:AddButton({
-    Name = "Fake Admin Overhead Tag",
-    Callback = createFakeAdminTag
-})
+trollTab:AddButton({Name="Fake Admin Tag", Callback=createFakeAdminTag})
 
--- Explode Yourself
-trollTab:AddButton({
-    Name = "Explode Yourself",
-    Callback = function()
-        local char = LocalPlayer.Character
-        if char then
-            for _, part in pairs(char:GetChildren()) do
-                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-                    part:BreakJoints()
-                    part.Velocity = Vector3.new(math.random(-50,50), math.random(50,100), math.random(-50,50))
-                end
-            end
-        end
-    end
-})
-
--- Fake Ban UI
-trollTab:AddButton({
-    Name = "Fake Ban UI",
-    Callback = function()
-        local screen = Instance.new("ScreenGui", game.CoreGui)
-        screen.Name = "FakeBanScreen"
-
-        local frame = Instance.new("Frame", screen)
-        frame.Size = UDim2.new(0.5, 0, 0.3, 0)
-        frame.Position = UDim2.new(0.25, 0, 0.35, 0)
-        frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        frame.BorderSizePixel = 0
-
-        local text = Instance.new("TextLabel", frame)
-        text.Size = UDim2.new(1, 0, 1, 0)
-        text.BackgroundTransparency = 1
-        text.Text = "\u26a0\ufe0f You've been BANNED from Roblox\nReason: Trolling too hard \ud83d\ude40"
-        text.TextColor3 = Color3.fromRGB(255, 0, 0)
-        text.Font = Enum.Font.GothamBold
-        text.TextScaled = true
-        text.TextWrapped = true
-
-        wait(5)
-        screen:Destroy()
-    end
-})
-
--- Flop Mode (ragdoll spam)
-trollTab:AddToggle({
-    Name = "Flop Mode",
-    Default = false,
-    Callback = function(state)
-        if state then
-            while state do
-                local char = LocalPlayer.Character
-                if char and char:FindFirstChild("Humanoid") then
-                    char.Humanoid:ChangeState(Enum.HumanoidStateType.Ragdoll)
-                end
-                wait(1)
-                state = trollTab.Flags["Flop Mode"].Value
-            end
-        end
-    end
-})
-
--- Finalize UI
+-- Init
 OrionLib:Init()
