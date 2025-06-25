@@ -1,3 +1,4 @@
+-- Valley Prison Hub | Roblox | OrionLib UI
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/jensonhirst/Orion/main/source"))()
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -6,26 +7,24 @@ local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
 local Window = OrionLib:MakeWindow({
-    Name = "Minecraft Hub",
+    Name = "Valley Prison Hub",
     HidePremium = false,
     SaveConfig = true,
-    ConfigFolder = "MinecraftHubConfig",
+    ConfigFolder = "ValleyPrisonHubConfig",
     IntroEnabled = true,
-    IntroText = "Welcome to Minecraft Hub!",
+    IntroText = "Welcome to Valley Prison Hub!",
     IntroIcon = "rbxassetid://4483345998",
     Icon = "rbxassetid://4483345998",
     CloseCallback = function()
+        -- Cleanup connections & reset player settings when closing
         if speedConn then speedConn:Disconnect() speedConn = nil end
-        if jumpConn then jumpConn:Disconnect() jumpConn = nil end
+        if jumpConn then jumpConn:Disconnect() jumpConn:Nil() end
         if noclipConn then noclipConn:Disconnect() noclipConn = nil end
-        if espConn then espConn:Disconnect() espConn = nil end
         if flyConn then flyConn:Disconnect() flyConn = nil end
+        if espConn then espConn:Disconnect() espConn = nil end
+        if aimbotConn then aimbotConn:Disconnect() aimbotConn = nil end
 
-        for _, drawing in pairs(ESPDrawings) do
-            drawing:Remove()
-        end
-        ESPDrawings = {}
-
+        -- Reset player stats and parts collision
         local char = LocalPlayer.Character
         if char and char:FindFirstChild("Humanoid") then
             char.Humanoid.WalkSpeed = 16
@@ -36,29 +35,35 @@ local Window = OrionLib:MakeWindow({
                 end
             end
         end
+
+        -- Remove ESP drawings
+        for _, drawing in pairs(ESPDrawings or {}) do
+            drawing:Remove()
+        end
+        ESPDrawings = {}
     end
 })
 
 -- Tabs
 local mainTab = Window:MakeTab({Name = "Main", Icon = "rbxassetid://4483345998"})
-local playerTab = Window:MakeTab({Name = "Players", Icon = "rbxassetid://4483345998"})
+local playerTab = Window:MakeTab({Name = "Player", Icon = "rbxassetid://4483345998"})
 local combatTab = Window:MakeTab({Name = "Combat", Icon = "rbxassetid://4483345998"})
 local utilityTab = Window:MakeTab({Name = "Utility", Icon = "rbxassetid://4483345998"})
 
--- Main tab content
-mainTab:AddLabel("Minecraft Hub • Version v1.0.0")
-mainTab:AddParagraph("Credits", "Made by Dustin. Inspired by Minecraft mechanics.")
+-- MAIN TAB --
+mainTab:AddLabel("Valley Prison Hub • Version 1.0.0")
+mainTab:AddParagraph("Welcome!", "This hub is made to give you the best experience in Valley Prison. Use the tabs to customize your gameplay.")
 
--- Player tab variables
+-- PLAYER TAB --
+
 local DesiredSpeed = 16
 local DesiredJump = 50
-local speedConn, jumpConn, noclipConn, flyConn, espConn
+local speedConn, jumpConn, noclipConn, flyConn, espConn, aimbotConn
 local noclipEnabled = false
 local flying = false
-local flyBodyVelocity
-local flyBodyGyro
-local ESPDrawings = {}
+local flyBodyVelocity, flyBodyGyro
 local flySpeed = 50
+local ESPDrawings = {}
 
 -- Speed Slider
 playerTab:AddSlider({
@@ -207,7 +212,9 @@ playerTab:AddToggle({
     end
 })
 
--- Combat Tab --
+-- COMBAT TAB --
+
+local ESPDrawings = {}
 
 combatTab:AddToggle({
     Name = "ESP",
@@ -234,7 +241,7 @@ combatTab:AddToggle({
                             if not ESPDrawings[player] then
                                 local box = Drawing.new("Square")
                                 box.Visible = true
-                                box.Color = Color3.fromRGB(0, 255, 0) -- Minecraft green vibe
+                                box.Color = Color3.new(1, 0, 0) -- red for enemies
                                 box.Thickness = 2
                                 box.Filled = false
                                 ESPDrawings[player] = box
@@ -267,18 +274,125 @@ combatTab:AddToggle({
     Save = true,
     Flag = "wallbang",
     Callback = function(enabled)
-        -- Wallbang needs game/exploit-specific implementation
-        print("Wallbang toggled:", enabled)
+        -- Wallbang needs custom exploit & game-specific implementation
+        print("Wallbang toggled: ", enabled)
     end
 })
 
--- Utility Tab --
+-- AIMBOT SNAP --  
+combatTab:AddToggle({
+    Name = "Snap Aimbot",
+    Default = false,
+    Save = true,
+    Flag = "aimbot",
+    Callback = function(enabled)
+        if aimbotConn then
+            aimbotConn:Disconnect()
+            aimbotConn = nil
+        end
 
+        if enabled then
+            aimbotConn = RunService.RenderStepped:Connect(function()
+                local closestPlayer = nil
+                local shortestDistance = math.huge
+                local mousePos = UserInputService:GetMouseLocation()
+
+                for _, player in pairs(Players:GetPlayers()) do
+                    if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
+                        local head = player.Character:FindFirstChild("Head")
+                        if head then
+                            local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                            if onScreen then
+                                local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(mousePos.X, mousePos.Y)).Magnitude
+                                if dist < shortestDistance then
+                                    shortestDistance = dist
+                                    closestPlayer = player
+                                end
+                            end
+                        end
+                    end
+                end
+
+                if closestPlayer and closestPlayer.Character then
+                    local head = closestPlayer.Character:FindFirstChild("Head")
+                    if head then
+                        Camera.CFrame = CFrame.new(Camera.CFrame.Position, head.Position)
+                    end
+                end
+            end)
+        end
+    end
+})
+
+-- UTILITY TAB --
+
+utilityTab:AddButton({
+    Name = "Teleport to Spawn",
+    Callback = function()
+        local spawnLocation = workspace:FindFirstChild("SpawnLocation") or workspace:FindFirstChild("Spawn")
+        local char = LocalPlayer.Character
+        if spawnLocation and char and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.CFrame = spawnLocation.CFrame + Vector3.new(0, 5, 0)
+        else
+            OrionLib:MakeNotification({
+                Name = "Teleport Error",
+                Content = "Spawn location not found!",
+                Image = "rbxassetid://4483345998",
+                Time = 3
+            })
+        end
+    end
+})
+
+-- Teleport to Player Dropdown
+local playerList = {}
+for _, player in pairs(Players:GetPlayers()) do
+    table.insert(playerList, player.Name)
+end
+
+local teleportDropdown = utilityTab:AddDropdown({
+    Name = "Teleport to Player",
+    Default = playerList[1] or "",
+    Options = playerList,
+    Callback = function(selected)
+        local targetPlayer = Players:FindFirstChild(selected)
+        local char = LocalPlayer.Character
+        if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") and char and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame + Vector3.new(0, 5, 0)
+        else
+            OrionLib:MakeNotification({
+                Name = "Teleport Error",
+                Content = "Could not teleport to player!",
+                Image = "rbxassetid://4483345998",
+                Time = 3
+            })
+        end
+    end
+})
+
+-- Quit Button
 utilityTab:AddButton({
     Name = "Quit",
     Callback = function()
-        LocalPlayer:Kick("You quit Minecraft Hub.")
+        LocalPlayer:Kick("You quit Valley Prison Hub.")
     end
 })
 
+-- Update player list on join/leave
+Players.PlayerAdded:Connect(function(player)
+    table.insert(playerList, player.Name)
+    teleportDropdown:Refresh(playerList, true)
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    for i, name in ipairs(playerList) do
+        if name == player.Name then
+            table.remove(playerList, i)
+            break
+        end
+    end
+    teleportDropdown:Refresh(playerList, true)
+end)
+
+-- Init UI
 OrionLib:Init()
