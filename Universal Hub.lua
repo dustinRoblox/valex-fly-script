@@ -1,124 +1,85 @@
--- Universal Hub | Roblox | Using OrionLib
+-- // Load Orion Library
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/jensonhirst/Orion/main/source"))()
+
+-- // Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
-
--- Variables
-local speedConn, jumpConn, noclipConn, flyConn, espConn, clickTPConn
 local ESPDrawings = {}
-local DesiredSpeed = 16
-local DesiredJump = 50
-local noclipEnabled = false
-local invisEnabled = false
-local clickTPEnabled = false
+local speedConn, jumpConn, noclipConn, espConn
 
--- Window
+-- // Cleanup on Exit
+local function Cleanup()
+    if speedConn then speedConn:Disconnect() end
+    if jumpConn then jumpConn:Disconnect() end
+    if noclipConn then noclipConn:Disconnect() end
+    if espConn then espConn:Disconnect() end
+    for _, box in pairs(ESPDrawings) do
+        box:Remove()
+    end
+end
+
+-- // Create Window
 local Window = OrionLib:MakeWindow({
     Name = "Universal Hub",
     HidePremium = false,
     SaveConfig = true,
     ConfigFolder = "UniversalHub",
-    IntroEnabled = true,
-    IntroText = "Loading Universal Hub...",
-    IntroIcon = "rbxassetid://4483345998",
-    Icon = "rbxassetid://4483345998",
-    CloseCallback = function()
-        for _, conn in pairs({speedConn, jumpConn, noclipConn, flyConn, espConn, clickTPConn}) do
-            if conn then conn:Disconnect() end
-        end
-        for _, d in pairs(ESPDrawings) do
-            d:Remove()
-        end
-        ESPDrawings = {}
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("Humanoid") then
-            char.Humanoid.WalkSpeed = 16
-            char.Humanoid.JumpPower = 50
-        end
-    end
+    IntroText = "Universal Hub • v1.0",
+    CloseCallback = Cleanup
 })
 
--- Tabs
-local mainTab = Window:MakeTab({Name = "Main", Icon = "rbxassetid://4483345998"})
-local playerTab = Window:MakeTab({Name = "Players", Icon = "rbxassetid://4483345998"})
-local combatTab = Window:MakeTab({Name = "Combat", Icon = "rbxassetid://4483345998"})
-local utilityTab = Window:MakeTab({Name = "Utility", Icon = "rbxassetid://4483345998"})
+-- // Tabs
+local MainTab = Window:MakeTab({Name = "Main", Icon = "rbxassetid://4483345998"})
+local PlayersTab = Window:MakeTab({Name = "Players", Icon = "rbxassetid://4483345998"})
+local CombatTab = Window:MakeTab({Name = "Combat", Icon = "rbxassetid://4483345998"})
+local UtilityTab = Window:MakeTab({Name = "Utility", Icon = "rbxassetid://4483345998"})
 
--- Main Info
-mainTab:AddLabel("Universal Hub v1.0")
-mainTab:AddParagraph("Credits", "Made by Dustin ✨")
+-- // Main Tab
+MainTab:AddLabel("Universal Hub • Version 1.0")
+MainTab:AddParagraph("Credits", "Made by Dustin 💻")
 
--- Speed
-playerTab:AddSlider({
-    Name = "Speed",
-    Min = 16,
-    Max = 100,
-    Default = 16,
-    Increment = 1,
+-- // Players Tab
+PlayersTab:AddSlider({
+    Name = "Speed Boost",
+    Min = 16, Max = 100, Default = 16,
     Callback = function(v)
-        DesiredSpeed = v
         if speedConn then speedConn:Disconnect() end
         speedConn = RunService.Heartbeat:Connect(function()
             local char = LocalPlayer.Character
             if char and char:FindFirstChild("Humanoid") then
-                char.Humanoid.WalkSpeed = DesiredSpeed
+                char.Humanoid.WalkSpeed = v
             end
         end)
     end
 })
 
--- Jump Boost
-playerTab:AddSlider({
+PlayersTab:AddSlider({
     Name = "Jump Boost",
-    Min = 50,
-    Max = 100,
-    Default = 50,
-    Increment = 1,
+    Min = 50, Max = 100, Default = 50,
     Callback = function(v)
-        DesiredJump = v
         if jumpConn then jumpConn:Disconnect() end
         jumpConn = RunService.Heartbeat:Connect(function()
             local char = LocalPlayer.Character
             if char and char:FindFirstChild("Humanoid") then
-                char.Humanoid.JumpPower = DesiredJump
+                char.Humanoid.JumpPower = v
             end
         end)
     end
 })
 
--- Invisibility
-playerTab:AddToggle({
-    Name = "Invisibility",
-    Default = false,
-    Callback = function(state)
-        invisEnabled = state
-        local char = LocalPlayer.Character
-        if char then
-            for _, part in pairs(char:GetChildren()) do
-                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-                    part.Transparency = state and 1 or 0
-                    part.CanCollide = not state
-                end
-            end
-        end
-    end
-})
-
--- Noclip
-playerTab:AddToggle({
+PlayersTab:AddToggle({
     Name = "Noclip",
     Default = false,
-    Callback = function(state)
-        noclipEnabled = state
+    Callback = function(toggled)
         if noclipConn then noclipConn:Disconnect() end
-        if state then
+        if toggled then
             noclipConn = RunService.Stepped:Connect(function()
                 local char = LocalPlayer.Character
                 if char then
-                    for _, part in pairs(char:GetChildren()) do
+                    for _, part in ipairs(char:GetDescendants()) do
                         if part:IsA("BasePart") then
                             part.CanCollide = false
                         end
@@ -128,7 +89,7 @@ playerTab:AddToggle({
         else
             local char = LocalPlayer.Character
             if char then
-                for _, part in pairs(char:GetChildren()) do
+                for _, part in ipairs(char:GetDescendants()) do
                     if part:IsA("BasePart") then
                         part.CanCollide = true
                     end
@@ -138,44 +99,55 @@ playerTab:AddToggle({
     end
 })
 
--- ESP
-combatTab:AddToggle({
-    Name = "ESP (Boxes)",
+PlayersTab:AddToggle({
+    Name = "Invisible",
     Default = false,
-    Callback = function(enabled)
-        if espConn then
-            espConn:Disconnect()
-            espConn = nil
-            for _, d in pairs(ESPDrawings) do
-                d:Remove()
+    Callback = function(state)
+        local char = LocalPlayer.Character
+        if char then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.Transparency = state and 1 or 0
+                    if part:FindFirstChildOfClass("Decal") then
+                        part:FindFirstChildOfClass("Decal").Transparency = state and 1 or 0
+                    end
+                end
             end
-            ESPDrawings = {}
         end
+    end
+})
 
-        if enabled then
+-- // Combat Tab
+CombatTab:AddToggle({
+    Name = "ESP (Player Box)",
+    Default = false,
+    Callback = function(state)
+        if espConn then espConn:Disconnect() end
+        for _, box in pairs(ESPDrawings) do
+            box:Remove()
+        end
+        ESPDrawings = {}
+
+        if state then
             espConn = RunService.RenderStepped:Connect(function()
-                for _, player in pairs(Players:GetPlayers()) do
+                for _, player in ipairs(Players:GetPlayers()) do
                     if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
                         local head = player.Character.Head
                         local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
+
                         if onScreen then
                             if not ESPDrawings[player] then
                                 local box = Drawing.new("Square")
-                                box.Visible = true
                                 box.Color = Color3.new(1, 0, 0)
                                 box.Thickness = 2
+                                box.Size = Vector2.new(50, 50)
                                 box.Filled = false
                                 ESPDrawings[player] = box
                             end
-                            local box = ESPDrawings[player]
-                            local size = 50
-                            box.Size = Vector2.new(size, size)
-                            box.Position = Vector2.new(pos.X - size / 2, pos.Y - size / 2)
-                            box.Visible = true
-                        else
-                            if ESPDrawings[player] then
-                                ESPDrawings[player].Visible = false
-                            end
+                            ESPDrawings[player].Position = Vector2.new(pos.X - 25, pos.Y - 25)
+                            ESPDrawings[player].Visible = true
+                        elseif ESPDrawings[player] then
+                            ESPDrawings[player].Visible = false
                         end
                     end
                 end
@@ -184,39 +156,50 @@ combatTab:AddToggle({
     end
 })
 
--- Click to Teleport
-utilityTab:AddToggle({
-    Name = "Click To Teleport",
-    Default = false,
-    Callback = function(state)
-        clickTPEnabled = state
-        if clickTPConn then clickTPConn:Disconnect() end
-        if state then
-            clickTPConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
-                if gameProcessed then return end
-                if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    local mouse = LocalPlayer:GetMouse()
-                    local pos = mouse.Hit and mouse.Hit.Position
-                    if pos then
-                        local char = LocalPlayer.Character
-                        if char and char:FindFirstChild("HumanoidRootPart") then
-                            char.HumanoidRootPart.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0))
-                        end
-                    end
-                end
-            end)
-        end
-    end
-})
-
--- Quit Button
-utilityTab:AddButton({
-    Name = "Quit Hub",
+-- // Utility Tab
+UtilityTab:AddTextbox({
+    Name = "Click to Teleport",
+    Default = "Enable & Click",
+    TextDisappear = true,
     Callback = function()
-        LocalPlayer:Kick("You quit Universal Hub.")
+        local conn
+        conn = UserInputService.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                local mousePos = UserInputService:GetMouseLocation()
+                local unitRay = Camera:ScreenPointToRay(mousePos.X, mousePos.Y)
+                local ray = Ray.new(unitRay.Origin, unitRay.Direction * 500)
+                local hit = workspace:FindPartOnRay(ray, LocalPlayer.Character)
+                if hit then
+                    LocalPlayer.Character:MoveTo(hit.Position + Vector3.new(0, 5, 0))
+                end
+                conn:Disconnect()
+            end
+        end)
     end
 })
 
--- Init UI
+UtilityTab:AddDropdown({
+    Name = "Teleport to Player",
+    Default = "",
+    Options = {},
+    Callback = function(name)
+        local target = Players:FindFirstChild(name)
+        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character:MoveTo(target.Character.HumanoidRootPart.Position)
+        end
+    end
+})
+
+for _, p in ipairs(Players:GetPlayers()) do
+    UtilityTab.Flags["Teleport to Player"]:Add(p.Name)
+end
+
+UtilityTab:AddButton({
+    Name = "Quit",
+    Callback = function()
+        LocalPlayer:Kick("Goodbye 👋")
+    end
+})
+
+-- // Launch UI
 OrionLib:Init()
--
