@@ -1,10 +1,11 @@
--- Ohio Hub | Stable Version w/ Heal Fix & Infinite Money
+-- Ohio Hub | Complete Stable Script
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/jensonhirst/Orion/main/source"))()
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
+-- Create window
 local Window = OrionLib:MakeWindow({
     Name = "Ohio Hub",
     HidePremium = false,
@@ -15,6 +16,7 @@ local Window = OrionLib:MakeWindow({
     IntroIcon = "rbxassetid://4483345998",
     Icon = "rbxassetid://4483345998",
     CloseCallback = function()
+        -- Cleanup on close
         if speedConn then speedConn:Disconnect() speedConn = nil end
         if jumpConn then jumpConn:Disconnect() jumpConn = nil end
         if noclipConn then noclipConn:Disconnect() noclipConn = nil end
@@ -38,20 +40,26 @@ local Window = OrionLib:MakeWindow({
     end
 })
 
+-- Tabs
 local mainTab = Window:MakeTab({Name = "Main", Icon = "rbxassetid://4483345998"})
 local playerTab = Window:MakeTab({Name = "Players", Icon = "rbxassetid://4483345998"})
 local combatTab = Window:MakeTab({Name = "Combat", Icon = "rbxassetid://4483345998"})
 local utilityTab = Window:MakeTab({Name = "Utility", Icon = "rbxassetid://4483345998"})
 
+-- Main Tab: Version + Credits
 mainTab:AddLabel("Ohio Hub • Version v1.1.0")
 mainTab:AddParagraph("Credits", "Created by Dustin using Orion Library")
 
-local speedConn, jumpConn, noclipConn, infMoneyConn
+-- Variables
+local speedConn, jumpConn, noclipConn, infMoneyConn, espConn
 local DesiredSpeed = 16
 local DesiredJump = 50
 local noclipEnabled = false
 local ESPDrawings = {}
 
+-- Players Tab
+
+-- Speed Slider (16-100)
 playerTab:AddSlider({
     Name = "Speed",
     Min = 16,
@@ -78,6 +86,7 @@ playerTab:AddSlider({
     end
 })
 
+-- Jump Boost Slider (50-100)
 playerTab:AddSlider({
     Name = "Jump Boost",
     Min = 50,
@@ -104,6 +113,7 @@ playerTab:AddSlider({
     end
 })
 
+-- Heal Button (Heals and maintains health for 5 sec)
 playerTab:AddButton({
     Name = "Heal",
     Callback = function()
@@ -124,6 +134,7 @@ playerTab:AddButton({
     end
 })
 
+-- Noclip Toggle
 playerTab:AddToggle({
     Name = "Noclip",
     Default = false,
@@ -159,14 +170,13 @@ playerTab:AddToggle({
     end
 })
 
-local infMoneyEnabled = false
+-- Infinite Money Toggle
 playerTab:AddToggle({
     Name = "Infinite Money",
     Default = false,
     Save = true,
     Flag = "infmoney",
     Callback = function(state)
-        infMoneyEnabled = state
         if infMoneyConn then
             infMoneyConn:Disconnect()
             infMoneyConn = nil
@@ -185,6 +195,9 @@ playerTab:AddToggle({
     end
 })
 
+-- Combat Tab
+
+-- ESP Toggle
 combatTab:AddToggle({
     Name = "ESP",
     Default = false,
@@ -218,3 +231,46 @@ combatTab:AddToggle({
                             end
                             local box = ESPDrawings[player]
                             local size = 50
+                            box.Size = Vector2.new(size, size)
+                            box.Position = Vector2.new(pos.X - size / 2, pos.Y - size / 2)
+                            box.Visible = true
+                        else
+                            if ESPDrawings[player] then
+                                ESPDrawings[player].Visible = false
+                            end
+                        end
+                    else
+                        if ESPDrawings[player] then
+                            ESPDrawings[player]:Remove()
+                            ESPDrawings[player] = nil
+                        end
+                    end
+                end
+            end)
+        end
+    end
+})
+
+-- Wallbang Toggle (Placeholder)
+combatTab:AddToggle({
+    Name = "Wallbang",
+    Default = false,
+    Save = true,
+    Flag = "wallbang",
+    Callback = function(enabled)
+        print("Wallbang toggled:", enabled)
+        -- Needs exploit-specific code, placeholder only
+    end
+})
+
+-- Utility Tab
+
+utilityTab:AddButton({
+    Name = "Quit",
+    Callback = function()
+        LocalPlayer:Kick("You quit Ohio Hub.")
+    end
+})
+
+-- Init UI
+OrionLib:Init()
