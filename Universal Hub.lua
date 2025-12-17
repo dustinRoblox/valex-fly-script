@@ -1,192 +1,212 @@
--- Universal Hub | NovaRise Studios
-local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/jensonhirst/Orion/main/source"))()
+--// Orion Universal Hub
+--// Works in most Roblox games
+--// UI Library
+local OrionLib = loadstring(game:HttpGet(("https://raw.githubusercontent.com/shlexware/Orion/main/source")))()
+
+--// Window
+local Window = OrionLib:MakeWindow({
+	Name = "Universal Orion Hub",
+	HidePremium = false,
+	SaveConfig = true,
+	ConfigFolder = "UniversalOrion"
+})
+
+--// Services
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
-local Window = OrionLib:MakeWindow({
-    Name = "Universal Hub | NovaRise Studios",
-    HidePremium = false,
-    SaveConfig = true,
-    ConfigFolder = "UniversalHubConfig",
-    IntroEnabled = true,
-    IntroText = "NovaRise Studios Presents...",
-    IntroIcon = "rbxassetid://4483345998",
-    Icon = "rbxassetid://4483345998"
-})
-
--- Tabs
-local mainTab = Window:MakeTab({Name = "Main", Icon = "rbxassetid://4483345998"})
-local playerTab = Window:MakeTab({Name = "Players", Icon = "rbxassetid://4483345998"})
-local combatTab = Window:MakeTab({Name = "Combat", Icon = "rbxassetid://4483345998"})
-local utilityTab = Window:MakeTab({Name = "Utility", Icon = "rbxassetid://4483345998"})
-
--- Main Tab
-mainTab:AddLabel("Welcome to Universal Hub")
-mainTab:AddLabel("Powered by NovaRise Studios")
-mainTab:AddLabel("Version: v1.0.0")
-
--- Player Tab
-local DesiredSpeed = 16
-local DesiredJump = 50
-local noclipConn
-local speedConn, jumpConn
-
-playerTab:AddSlider({
-    Name = "Speed Boost",
-    Min = 16,
-    Max = 100,
-    Default = 16,
-    Increment = 1,
-    Callback = function(v)
-        DesiredSpeed = v
-        if speedConn then speedConn:Disconnect() end
-        speedConn = RunService.Heartbeat:Connect(function()
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("Humanoid") then
-                char.Humanoid.WalkSpeed = DesiredSpeed
-            end
-        end)
-    end
-})
-
-playerTab:AddSlider({
-    Name = "Jump Power",
-    Min = 50,
-    Max = 100,
-    Default = 50,
-    Increment = 1,
-    Callback = function(v)
-        DesiredJump = v
-        if jumpConn then jumpConn:Disconnect() end
-        jumpConn = RunService.Heartbeat:Connect(function()
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("Humanoid") then
-                char.Humanoid.JumpPower = DesiredJump
-            end
-        end)
-    end
-})
-
-playerTab:AddToggle({
-    Name = "Noclip",
-    Default = false,
-    Callback = function(state)
-        if noclipConn then noclipConn:Disconnect() end
-        if state then
-            noclipConn = RunService.Stepped:Connect(function()
-                local char = LocalPlayer.Character
-                if char then
-                    for _, part in pairs(char:GetChildren()) do
-                        if part:IsA("BasePart") then
-                            part.CanCollide = false
-                        end
-                    end
-                end
-            end)
-        else
-            local char = LocalPlayer.Character
-            if char then
-                for _, part in pairs(char:GetChildren()) do
-                    if part:IsA("BasePart") then
-                        part.CanCollide = true
-                    end
-                end
-            end
-        end
-    end
-})
-
--- Combat Tab
-local tracerConn = nil
-local tracerLines = {}
-
-combatTab:AddToggle({
-    Name = "Charms ESP",
-    Default = false,
-    Callback = function(state)
-        if tracerConn then tracerConn:Disconnect() end
-        for _, line in pairs(tracerLines) do line:Remove() end
-        tracerLines = {}
-
-        if state then
-            tracerConn = RunService.RenderStepped:Connect(function()
-                for _, player in pairs(Players:GetPlayers()) do
-                    if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                        local rootPart = player.Character.HumanoidRootPart
-                        local screenPos, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
-                        if onScreen then
-                            if not tracerLines[player] then
-                                local line = Drawing.new("Line")
-                                line.Color = Color3.fromRGB(0, 255, 255)
-                                line.Thickness = 2
-                                line.Transparency = 1
-                                tracerLines[player] = line
-                            end
-                            local line = tracerLines[player]
-                            local localPos = Camera:WorldToViewportPoint(LocalPlayer.Character.HumanoidRootPart.Position)
-                            line.From = Vector2.new(localPos.X, localPos.Y)
-                            line.To = Vector2.new(screenPos.X, screenPos.Y)
-                            line.Visible = true
-                        end
-                    elseif tracerLines[player] then
-                        tracerLines[player].Visible = false
-                    end
-                end
-            end)
-        else
-            for _, line in pairs(tracerLines) do line:Remove() end
-            tracerLines = {}
-        end
-    end
-})
-
--- Utility Tab
-local playerDropdown
-local allNames = {}
-for _, p in pairs(Players:GetPlayers()) do
-    if p.Name ~= LocalPlayer.Name then
-        table.insert(allNames, p.Name)
-    end
+--// Character vars
+local function getChar()
+	return LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 end
 
-playerDropdown = utilityTab:AddDropdown({
-    Name = "Teleport to Player",
-    Default = "",
-    Options = allNames,
-    Callback = function(name)
-        local target = Players:FindFirstChild(name)
-        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-            local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if root then
-                root.CFrame = target.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
-            end
-        end
-    end
+--// =========================
+--// MAIN TAB
+--// =========================
+local MainTab = Window:MakeTab({
+	Name = "Main",
+	Icon = "rbxassetid://4483345998",
+	PremiumOnly = false
 })
 
-Players.PlayerAdded:Connect(function(p)
-    table.insert(allNames, p.Name)
-    playerDropdown:Refresh(allNames, true)
-end)
-
-Players.PlayerRemoving:Connect(function(p)
-    for i, v in ipairs(allNames) do
-        if v == p.Name then
-            table.remove(allNames, i)
-            break
-        end
-    end
-    playerDropdown:Refresh(allNames, true)
-end)
-
-utilityTab:AddButton({
-    Name = "Quit",
-    Callback = function()
-        LocalPlayer:Kick("You have exited Universal Hub | NovaRise Studios.")
-    end
+MainTab:AddSlider({
+	Name = "WalkSpeed",
+	Min = 16,
+	Max = 200,
+	Default = 16,
+	Color = Color3.fromRGB(0,255,255),
+	Increment = 1,
+	ValueName = "Speed",
+	Callback = function(Value)
+		getChar():FindFirstChildOfClass("Humanoid").WalkSpeed = Value
+	end
 })
 
+MainTab:AddSlider({
+	Name = "JumpPower",
+	Min = 50,
+	Max = 300,
+	Default = 50,
+	Color = Color3.fromRGB(255,0,255),
+	Increment = 5,
+	ValueName = "Power",
+	Callback = function(Value)
+		getChar():FindFirstChildOfClass("Humanoid").JumpPower = Value
+	end
+})
+
+MainTab:AddButton({
+	Name = "Reset Character",
+	Callback = function()
+		getChar():BreakJoints()
+	end
+})
+
+--// =========================
+--// MOVEMENT TAB
+--// =========================
+local MovementTab = Window:MakeTab({
+	Name = "Movement",
+	Icon = "rbxassetid://4483345998",
+	PremiumOnly = false
+})
+
+-- Fly
+local flying = false
+local FlySpeed = 2
+
+MovementTab:AddToggle({
+	Name = "Fly",
+	Default = false,
+	Callback = function(Value)
+		flying = Value
+		local char = getChar()
+		local hrp = char:WaitForChild("HumanoidRootPart")
+		local bv = Instance.new("BodyVelocity", hrp)
+		local bg = Instance.new("BodyGyro", hrp)
+
+		bv.Velocity = Vector3.new(0,0,0)
+		bv.MaxForce = Vector3.new(9e9,9e9,9e9)
+		bg.MaxTorque = Vector3.new(9e9,9e9,9e9)
+
+		while flying do
+			RunService.RenderStepped:Wait()
+			bg.CFrame = Camera.CFrame
+			bv.Velocity = Camera.CFrame.LookVector * (FlySpeed * 25)
+		end
+
+		bv:Destroy()
+		bg:Destroy()
+	end
+})
+
+MovementTab:AddSlider({
+	Name = "Fly Speed",
+	Min = 1,
+	Max = 10,
+	Default = 2,
+	Increment = 1,
+	ValueName = "Speed",
+	Callback = function(Value)
+		FlySpeed = Value
+	end
+})
+
+-- Noclip
+local noclip = false
+MovementTab:AddToggle({
+	Name = "Noclip",
+	Default = false,
+	Callback = function(Value)
+		noclip = Value
+	end
+})
+
+RunService.Stepped:Connect(function()
+	if noclip then
+		for _,v in pairs(getChar():GetDescendants()) do
+			if v:IsA("BasePart") then
+				v.CanCollide = false
+			end
+		end
+	end
+end)
+
+--// =========================
+--// VISUALS TAB
+--// =========================
+local VisualTab = Window:MakeTab({
+	Name = "Visuals",
+	Icon = "rbxassetid://4483345998",
+	PremiumOnly = false
+})
+
+local ESPEnabled = false
+local ESPColor = Color3.fromRGB(255,0,0)
+
+VisualTab:AddToggle({
+	Name = "Player ESP",
+	Default = false,
+	Callback = function(Value)
+		ESPEnabled = Value
+	end
+})
+
+RunService.RenderStepped:Connect(function()
+	if not ESPEnabled then return end
+
+	for _,player in pairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+			if not player.Character.Head:FindFirstChild("ESP") then
+				local billboard = Instance.new("BillboardGui", player.Character.Head)
+				billboard.Name = "ESP"
+				billboard.Size = UDim2.new(0,100,0,40)
+				billboard.AlwaysOnTop = true
+
+				local text = Instance.new("TextLabel", billboard)
+				text.Size = UDim2.new(1,0,1,0)
+				text.BackgroundTransparency = 1
+				text.Text = player.Name
+				text.TextColor3 = ESPColor
+				text.TextStrokeTransparency = 0
+				text.TextScaled = true
+			end
+		end
+	end
+end)
+
+--// =========================
+--// MISC TAB
+--// =========================
+local MiscTab = Window:MakeTab({
+	Name = "Misc",
+	Icon = "rbxassetid://4483345998",
+	PremiumOnly = false
+})
+
+-- Anti AFK
+MiscTab:AddButton({
+	Name = "Anti AFK",
+	Callback = function()
+		local vu = game:GetService("VirtualUser")
+		LocalPlayer.Idled:Connect(function()
+			vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+			wait(1)
+			vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+		end)
+	end
+})
+
+-- Rejoin
+MiscTab:AddButton({
+	Name = "Rejoin Server",
+	Callback = function()
+		game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer)
+	end
+})
+
+--// Init
 OrionLib:Init()
